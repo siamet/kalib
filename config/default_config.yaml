@@ -1,0 +1,121 @@
+# Kalib Microscopy Control System - Default Configuration
+# Copy this file to config.yaml and customize for your setup
+
+# Camera Configuration
+camera:
+  exposure_time_min: 100          # Minimum exposure time (microseconds)
+  exposure_time_max: 100000       # Maximum exposure time (microseconds)
+  default_exposure: 15000         # Default exposure time (microseconds)
+  fps_limit: 30                   # Maximum frames per second
+  save_format: "tiff"             # Image save format (tiff, png, jpg)
+  pixel_format: "RGB8"            # Pixel format for camera
+  auto_exposure: false            # Enable auto exposure by default
+
+# Motion Stage Configuration
+stages:
+  xy:
+    device_id: "113068710"        # PI E-725 device serial number
+    model: "E-725"                # Stage model
+    x_range: [0, 100]             # X-axis range in mm
+    y_range: [0, 100]             # Y-axis range in mm
+    default_step: 0.1             # Default step size in mm
+    velocity: 10.0                # Default velocity in mm/s
+    acceleration: 100.0           # Acceleration in mm/s²
+
+  z:
+    device_id: "112064239"        # PI E-816.DB device serial number
+    model: "E-816.DB"             # Stage model
+    z_range: [0, 10]              # Z-axis range in mm
+    default_step: 0.01            # Default step size in mm
+    velocity: 1.0                 # Default velocity in mm/s
+    acceleration: 10.0            # Acceleration in mm/s²
+
+# LED Light Configuration
+led:
+  port: "auto"                    # Serial port (auto-detect or specify e.g., /dev/ttyUSB0)
+  baud_rate: 115200               # Serial baud rate
+  brightness_range: [0, 255]      # Brightness value range
+  default_brightness: 128         # Default brightness value
+
+# File Paths
+paths:
+  data_dir: "./data"              # Directory for saved images and data
+  logs_dir: "./logs"              # Directory for log files
+  config_dir: "./config"          # Directory for configuration files
+  calibration_dir: "./data/calibration"  # Calibration data directory
+
+# Scanning Configuration
+scanning:
+  xy:
+    default_steps: 10             # Default number of steps in XY scan
+    overlap: 0.1                  # Overlap between adjacent images (0-1)
+    save_individual_frames: true  # Save each frame separately
+
+  z_stack:
+    default_steps: 20             # Default number of steps in Z-stack
+    save_individual_frames: true  # Save each frame separately
+
+  sff:
+    sharpness_metric: "gradient"  # Sharpness metric (gradient, contrast, variance)
+    kernel_size: 3                # Kernel size for sharpness calculation
+
+  autosave: true                  # Automatically save scan results
+  save_metadata: true             # Save scan metadata (positions, settings)
+
+# Calibration Configuration
+calibration:
+  tilt:
+    corner_positions: 4           # Number of corner positions for tilt calibration
+    sharpness_threshold: 0.5      # Minimum sharpness threshold
+
+  magnetic:
+    num_positions: 10             # Number of positions for magnetic calibration
+    tolerance: 0.01               # Position tolerance in mm
+
+  autofocus:
+    search_range: 1.0             # Focus search range in mm
+    step_size: 0.05               # Step size for focus search in mm
+    max_iterations: 20            # Maximum autofocus iterations
+
+# User Interface Configuration
+ui:
+  theme: "dark"                   # UI theme (dark or light)
+  language: "en"                  # Language (en, fr, de, etc.)
+  window_geometry: [1554, 866]   # Default window size [width, height]
+  show_tooltips: true             # Show tooltips on UI elements
+  confirm_destructive: true       # Confirm destructive actions
+
+  camera_feed:
+    refresh_rate: 30              # Camera feed refresh rate (fps)
+    zoom_levels: [0.25, 0.5, 1.0, 2.0, 4.0]  # Available zoom levels
+
+  status_bar:
+    show_position: true           # Show stage position in status bar
+    show_fps: true                # Show camera FPS in status bar
+    update_interval: 100          # Status bar update interval (ms)
+
+# Logging Configuration
+logging:
+  console_level: "INFO"           # Console log level (DEBUG, INFO, WARNING, ERROR)
+  file_level: "DEBUG"             # File log level
+  max_log_size: 10485760          # Maximum log file size (10MB)
+  backup_count: 5                 # Number of backup log files
+
+# Performance Configuration
+performance:
+  max_image_buffer: 100           # Maximum number of images in buffer
+  thread_pool_size: 4             # Number of worker threads
+  enable_gpu: false               # Enable GPU acceleration (if available)
+
+# Hardware Timeouts (milliseconds)
+timeouts:
+  camera_connect: 5000            # Camera connection timeout
+  stage_connect: 3000             # Stage connection timeout
+  stage_move: 30000               # Stage movement timeout
+  led_connect: 2000               # LED connection timeout
+
+# Safety Limits
+safety:
+  enable_soft_limits: true        # Enable software position limits
+  enable_limit_checks: true       # Check limits before movement
+  emergency_stop_enabled: true    # Enable emergency stop functionality

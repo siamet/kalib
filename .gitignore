@@ -1,0 +1,131 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+# .python-version  # Commented out: we want to track this for uv
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Kalib-specific
+logs/
+data/
+*.log
+*.tiff
+*.tif
+*.png
+*.jpg
+*.jpeg
+*_old
+
+# Configuration (keep default, ignore user config)
+config/config.yaml
+config/user_*.yaml
+
+# Calibration data (optional: remove if you want to track calibration)
+data/calibration/*.csv
+data/calibration/*.npy
+
+# Backup files
+*_old.py
+*.bak
+*.backup
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# OS-specific
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Documentation builds
+docs/_build/
+docs/_static/
+docs/_templates/
+
+# PyCharm
+.idea/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Conda
+*.conda
+*.tar.bz2
+
+# Coding Agents
+.claude/
+.agents/
+.codex/
+.opencode/
+.serena/
