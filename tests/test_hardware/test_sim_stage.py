@@ -2,7 +2,7 @@
 
 import pytest
 
-from kalib.hardware.base import CommandError, ConnectionError
+from kalib.hardware.base import ConnectionError
 from kalib.hardware.sim.sim_stage import SimStageXY, SimStageZ
 from kalib.hardware.sim.world import SimWorld
 
@@ -31,12 +31,16 @@ def test_xy_relative_move_is_additive(world):
     assert stage.get_position() == (pytest.approx(12.5), pytest.approx(7.0))
 
 
-def test_xy_move_outside_range_is_rejected(world):
-    """Out-of-range moves raise rather than silently clamping."""
+def test_xy_move_clamps_out_of_range(world):
+    """Out-of-range moves are clamped to the valid range."""
     stage = SimStageXY(world, x_range=(0.0, 100.0), y_range=(0.0, 100.0))
     stage.connect()
-    with pytest.raises(CommandError):
-        stage.move_absolute(x=150.0)
+    # Move beyond upper limit
+    stage.move_absolute(x=150.0)
+    assert stage.get_position()[0] == pytest.approx(100.0)
+    # Move beyond lower limit
+    stage.move_absolute(x=-10.0)
+    assert stage.get_position()[0] == pytest.approx(0.0)
 
 
 def test_z_move_updates_world(world):
@@ -48,12 +52,16 @@ def test_z_move_updates_world(world):
     assert stage.get_position() == pytest.approx(7.5)
 
 
-def test_z_move_outside_range_is_rejected(world):
-    """Z respects its configured range."""
+def test_z_move_clamps_out_of_range(world):
+    """Out-of-range Z moves are clamped to the valid range."""
     stage = SimStageZ(world, z_range=(0.0, 10.0))
     stage.connect()
-    with pytest.raises(CommandError):
-        stage.move_absolute(20.0)
+    # Move beyond upper limit
+    stage.move_absolute(20.0)
+    assert stage.get_position() == pytest.approx(10.0)
+    # Move beyond lower limit
+    stage.move_absolute(-5.0)
+    assert stage.get_position() == pytest.approx(0.0)
 
 
 def test_stages_share_one_world(world):

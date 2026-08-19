@@ -2,7 +2,7 @@
 
 from typing import List, Optional, Tuple
 
-from kalib.hardware.base import CommandError, HardwareDevice
+from kalib.hardware.base import HardwareDevice
 from kalib.hardware.sim.world import SimWorld
 
 
@@ -46,22 +46,31 @@ class SimStageXY(HardwareDevice):
     def _do_initialize(self) -> None:
         """Initialize the simulated stage."""
 
-    def _check_range(self, value: float, limits: Tuple[float, float],
-                     axis: str) -> None:
-        """Raise if a target lies outside the permitted travel.
+    def _validate_position(self, x: float, y: float) -> Tuple[float, float]:
+        """Validate and clamp position to limits.
 
         Args:
-            value: Requested position in mm
-            limits: (minimum, maximum) in mm
-            axis: Axis name, for the error message
+            x: X position in mm
+            y: Y position in mm
 
-        Raises:
-            CommandError: If the target is out of range
+        Returns:
+            Tuple of clamped (x, y) positions
         """
-        low, high = limits
-        if not low <= value <= high:
-            raise CommandError(
-                f"{axis} target {value} outside range [{low}, {high}]")
+        x_min, x_max = self._x_range
+        y_min, y_max = self._y_range
+
+        # Clamp values
+        x_clamped = max(x_min, min(x_max, x))
+        y_clamped = max(y_min, min(y_max, y))
+
+        # Warn if clamping occurred
+        if x != x_clamped or y != y_clamped:
+            self._logger.warning(
+                f"Position ({x}, {y}) clamped to ({x_clamped}, {y_clamped}). "
+                f"Valid range: X=[{x_min}, {x_max}], Y=[{y_min}, {y_max}]"
+            )
+
+        return x_clamped, y_clamped
 
     def move_absolute(self, x: Optional[float] = None,
                       y: Optional[float] = None, wait: bool = True) -> None:
@@ -71,19 +80,20 @@ class SimStageXY(HardwareDevice):
             x: Target X in mm; unchanged if None
             y: Target Y in mm; unchanged if None
             wait: Accepted for API parity; simulated moves are instant
-
-        Raises:
-            CommandError: If a target is out of range
         """
         self._check_connected()
-        if x is not None:
-            self._check_range(x, self._x_range, "X")
-        if y is not None:
-            self._check_range(y, self._y_range, "Y")
-        if x is not None:
-            self._world.x = float(x)
-        if y is not None:
-            self._world.y = float(y)
+
+        # Get current position if needed
+        current = self.get_position()
+
+        target_x = x if x is not None else current[0]
+        target_y = y if y is not None else current[1]
+
+        # Validate and clamp position
+        target_x, target_y = self._validate_position(target_x, target_y)
+
+        self._world.x = float(target_x)
+        self._world.y = float(target_y)
 
     def move_relative(self, dx: float = 0.0, dy: float = 0.0,
                       wait: bool = True) -> None:
@@ -167,20 +177,41 @@ class SimStageZ(HardwareDevice):
     def _do_initialize(self) -> None:
         """Initialize the simulated stage."""
 
+    def _validate_position(self, z: float) -> float:
+        """Validate and clamp position to limits.
+
+        Args:
+            z: Z position in mm
+
+        Returns:
+            Clamped Z position
+        """
+        z_min, z_max = self._z_range
+
+        # Clamp value
+        z_clamped = max(z_min, min(z_max, z))
+
+        # Warn if clamping occurred
+        if z != z_clamped:
+            self._logger.warning(
+                f"Position {z} clamped to {z_clamped}. "
+                f"Valid range: [{z_min}, {z_max}]"
+            )
+
+        return z_clamped
+
     def move_absolute(self, z: float, wait: bool = True) -> None:
         """Move to an absolute Z position in mm.
 
         Args:
             z: Target Z in mm
             wait: Accepted for API parity; simulated moves are instant
-
-        Raises:
-            CommandError: If the target is out of range
         """
         self._check_connected()
-        low, high = self._z_range
-        if not low <= z <= high:
-            raise CommandError(f"Z target {z} outside range [{low}, {high}]")
+
+        # Validate and clamp position
+        z = self._validate_position(z)
+
         self._world.z = float(z)
 
     def move_relative(self, dz: float, wait: bool = True) -> None:
