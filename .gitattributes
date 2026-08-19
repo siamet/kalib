@@ -1,0 +1,33 @@
+# Normalise line endings.
+#
+# The repository stores text as LF. Working copies get LF on every
+# platform, which keeps diffs between the Linux development machine and
+# the Windows instrument machine free of line-ending churn.
+#
+# Without this, Git for Windows (core.autocrlf=true by default) rewrites
+# line endings on commit and every file appears modified.
+
+* text=auto eol=lf
+
+# Windows batch files require CRLF to run correctly.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Explicitly text
+*.py    text eol=lf
+*.md    text eol=lf
+*.txt   text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.ui    text eol=lf
+*.sh    text eol=lf diff=bash
+
+# Never touch binaries
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.tif   binary
+*.tiff  binary
+*.npy   binary
+*.pyc   binary
