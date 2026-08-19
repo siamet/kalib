@@ -448,7 +448,7 @@ class MainWindow(QMainWindow):
             self,
             "About Kalib",
             "Kalib - Microscopy Control System\n\n"
-            "Version 2026.02.01\n\n"
+            "Version 2.0.0\n\n"
             "A comprehensive system for controlling IDS cameras and PI motion stages "
             "for microscopy applications.\n\n"
             "Built with PySide6 and modern software architecture."

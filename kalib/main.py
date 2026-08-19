@@ -69,7 +69,7 @@ class KalibApplication:
 
         self._logger = get_logger(__name__)
         self._logger.info("=" * 60)
-        self._logger.info("Kalib Microscopy Control System - Version 2026.02.01")
+        self._logger.info("Kalib Microscopy Control System - Version 2.0.0")
         self._logger.info("=" * 60)
 
     def initialize(self) -> bool:
