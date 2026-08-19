@@ -2,7 +2,7 @@
 
 from typing import Optional, Tuple
 
-from kalib.hardware.base import CommandError, HardwareDevice
+from kalib.hardware.base import HardwareDevice
 from kalib.hardware.sim.world import SimWorld
 
 
@@ -46,17 +46,18 @@ class SimLED(HardwareDevice):
         """Set brightness in raw device units.
 
         Args:
-            brightness: Target brightness
-
-        Raises:
-            CommandError: If brightness is outside the configured range
+            brightness: Target brightness (clamped to configured range)
         """
         self._check_connected()
         low, high = self._range
-        if not low <= brightness <= high:
-            raise CommandError(
-                f"Brightness {brightness} outside range [{low}, {high}]")
-        self._world.led_brightness = int(brightness)
+        brightness_int = int(brightness)
+        brightness_clamped = max(low, min(high, brightness_int))
+        if brightness_int != brightness_clamped:
+            self._logger.warning(
+                f"Brightness {brightness_int} clamped to {brightness_clamped}. "
+                f"Valid range: [{low}, {high}]"
+            )
+        self._world.led_brightness = brightness_clamped
 
     def get_brightness(self) -> int:
         """Return brightness in raw device units."""
@@ -84,9 +85,9 @@ class SimLED(HardwareDevice):
         """Switch the LED on.
 
         Args:
-            brightness: Level to use; defaults to the range maximum
+            brightness: Level to use; defaults to the current brightness
         """
-        self.set_brightness(self._range[1] if brightness is None else brightness)
+        self.set_brightness(self.get_brightness() if brightness is None else brightness)
 
     @property
     def brightness_range(self) -> Tuple[int, int]:

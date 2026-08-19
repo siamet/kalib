@@ -2,7 +2,6 @@
 
 import pytest
 
-from kalib.hardware.base import CommandError
 from kalib.hardware.sim.sim_led import SimLED
 from kalib.hardware.sim.world import SimWorld
 
@@ -21,12 +20,14 @@ def test_set_brightness_updates_world(world):
     assert led.get_brightness() == 128
 
 
-def test_brightness_outside_range_is_rejected(world):
-    """Out-of-range brightness raises rather than clamping."""
+def test_brightness_clamps_to_range(world):
+    """Out-of-range brightness is clamped to the configured range."""
     led = SimLED(world, brightness_range=(0, 255))
     led.connect()
-    with pytest.raises(CommandError):
-        led.set_brightness(300)
+    led.set_brightness(300)
+    assert led.get_brightness() == 255
+    led.set_brightness(-50)
+    assert led.get_brightness() == 0
 
 
 def test_turn_off_sets_zero(world):
@@ -36,6 +37,16 @@ def test_turn_off_sets_zero(world):
     led.set_brightness(200)
     led.turn_off()
     assert led.get_brightness() == 0
+
+
+def test_turn_on_with_explicit_brightness(world):
+    """turn_on with explicit brightness sets that value."""
+    led = SimLED(world)
+    led.connect()
+    led.turn_off()
+    assert led.get_brightness() == 0
+    led.turn_on(128)
+    assert led.get_brightness() == 128
 
 
 def test_percent_round_trips(world):
