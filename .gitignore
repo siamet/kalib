@@ -129,3 +129,6 @@ dmypy.json
 .codex/
 .opencode/
 .serena/
+
+# Serena
+.serena/

@@ -1,0 +1,34 @@
+================================================================================
+KALIB - WINDOWS DLL ERROR QUICK FIX
+================================================================================
+
+ERROR: "ImportError: DLL load failed while importing QtWidgets"
+
+SOLUTION (Try in order):
+
+1. INSTALL VISUAL C++ REDISTRIBUTABLES (Fixes 90% of cases)
+   Download: https://aka.ms/vs/17/release/vc_redist.x64.exe
+   Run as Administrator → Restart computer → Try again
+
+2. REINSTALL PYSIDE6 WITH STABLE VERSION
+   conda activate kalib
+   pip uninstall PySide6 -y
+   pip install PySide6==6.6.3.1
+   python -c "from PySide6.QtWidgets import QApplication; print('OK')"
+
+3. USE WINDOWS-OPTIMIZED ENVIRONMENT
+   conda deactivate
+   conda env remove -n kalib
+   conda env create -f environment_windows.yml
+   conda activate kalib
+
+4. FULL TROUBLESHOOTING GUIDE
+   See WINDOWS_SETUP.md for comprehensive solutions
+
+================================================================================
+QUICK TEST:
+   python -c "from PySide6.QtWidgets import QApplication; print('Success!')"
+
+If you see "Success!" → Problem fixed!
+If you see error → Continue to next solution
+================================================================================
