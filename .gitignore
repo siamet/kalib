@@ -132,3 +132,6 @@ dmypy.json
 
 # Serena
 .serena/
+
+# Deployment target (machine-specific)
+.env.deploy
