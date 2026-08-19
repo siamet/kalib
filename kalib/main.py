@@ -6,6 +6,7 @@ Initializes the application, creates controllers, and launches the main window.
 import sys
 import argparse
 from pathlib import Path
+from typing import List, Optional
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 
@@ -29,13 +30,16 @@ class KalibApplication:
     Manages application lifecycle, dependency injection, and cleanup.
     """
 
-    def __init__(self, config_path: str = None, log_level: str = None):
+    def __init__(self, config_path: str = None, log_level: str = None,
+                 simulate: bool = False):
         """Initialize application.
 
         Args:
             config_path: Path to configuration file
             log_level: Logging level override
+            simulate: Run against simulated hardware instead of the instrument
         """
+        self._simulate = simulate
         self._logger = None
         self.settings: Settings = None
         self.app: QApplication = None
@@ -113,17 +117,23 @@ class KalibApplication:
         """Initialize controllers with dependency injection."""
         self._logger.info("Initializing controllers...")
 
-        # Camera controller
-        camera_settings = self.settings.get_section('camera')
-        self.camera = CameraController(
-            device_idx=0  # TODO: Get from config
-        )
+        from kalib.hardware import HardwareFactory
+        from kalib.models import StageLimits
 
-        # Stage controller
+        if self._simulate:
+            self.settings.set('hardware.backend', 'sim')
+
+        factory = HardwareFactory(self.settings)
+        self._logger.info(f"Hardware backend: {factory.backend}")
+
         xy_device_id = self.settings.get('stages.xy.device_id')
         z_device_id = self.settings.get('stages.z.device_id')
 
-        from kalib.models import StageLimits
+        self.camera = CameraController(
+            device_idx=0,
+            device=factory.create_camera(device_idx=0)
+        )
+
         limits = StageLimits(
             x_min=self.settings.get('stages.xy.x_range[0]', 0.0),
             x_max=self.settings.get('stages.xy.x_range[1]', 100.0),
@@ -136,16 +146,23 @@ class KalibApplication:
         self.stage = StageController(
             xy_device_id=xy_device_id,
             z_device_id=z_device_id,
-            limits=limits
+            limits=limits,
+            xy_device=factory.create_stage_xy(
+                device_id=xy_device_id,
+                x_range=(limits.x_min, limits.x_max),
+                y_range=(limits.y_min, limits.y_max)
+            ),
+            z_device=factory.create_stage_z(
+                device_id=z_device_id,
+                z_range=(limits.z_min, limits.z_max)
+            )
         )
 
-        # Scan controller
         self.scan = ScanController(
             camera_controller=self.camera,
             stage_controller=self.stage
         )
 
-        # Calibration controller
         self.calibration = CalibrationController(
             camera_controller=self.camera,
             stage_controller=self.stage
@@ -203,8 +220,11 @@ class KalibApplication:
             self._logger.error(f"Error during cleanup: {e}", exc_info=True)
 
 
-def parse_arguments():
+def parse_arguments(argv: Optional[List[str]] = None):
     """Parse command line arguments.
+
+    Args:
+        argv: Argument list to parse; reads sys.argv when None
 
     Returns:
         Parsed arguments
@@ -235,7 +255,13 @@ def parse_arguments():
         help="Log directory path"
     )
 
-    return parser.parse_args()
+    parser.add_argument(
+        '--simulate',
+        action='store_true',
+        help="Run against simulated hardware instead of the instrument"
+    )
+
+    return parser.parse_args(argv)
 
 
 def main():
@@ -246,7 +272,8 @@ def main():
     # Create and run application
     app = KalibApplication(
         config_path=args.config,
-        log_level=args.log_level
+        log_level=args.log_level,
+        simulate=args.simulate
     )
 
     # Run application
