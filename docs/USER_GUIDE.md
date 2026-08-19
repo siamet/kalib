@@ -38,7 +38,7 @@
    ```bash
    uv venv --python 3.12
    source .venv/bin/activate
-   uv pip install -r requirements.txt
+   uv pip sync requirements.lock
    ```
 
 3. **Install IDS peak SDK** (manual step):

@@ -20,7 +20,7 @@ SOLUTION (Try in order):
    rmdir /s /q .venv
    uv venv --python 3.12
    .venv\Scripts\activate
-   uv pip install -r requirements.txt
+   uv pip sync requirements.lock
 
    If DLL errors persist, try Python 3.11 instead of 3.12:
    uv venv --python 3.11

@@ -88,7 +88,7 @@ uv venv --python 3.12
 .venv\Scripts\activate
 
 # Install dependencies
-uv pip install -r requirements.txt
+uv pip sync requirements.lock
 ```
 
 ### Step 3: Test Import
@@ -167,7 +167,7 @@ uv venv --python 3.11
 .venv\Scripts\activate
 
 # Install dependencies
-uv pip install -r requirements.txt
+uv pip sync requirements.lock
 ```
 
 ---
@@ -232,7 +232,7 @@ uv pip install black==23.12.1
 uv pip install mypy==1.8.0
 
 # Or install from requirements.txt (recommended)
-uv pip install -r requirements.txt
+uv pip sync requirements.lock
 ```
 
 ---

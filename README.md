@@ -60,7 +60,7 @@ export PATH="$HOME/.local/bin:$PATH"
 # Create virtual environment and install dependencies
 uv venv --python 3.12
 source .venv/bin/activate
-uv pip install -r requirements.txt
+uv pip sync requirements.lock          # exact tested versions
 
 # Install IDS peak SDK (manual step - see https://www.ids-imaging.com/)
 
@@ -85,7 +85,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 # Create virtual environment and install dependencies
 uv venv --python 3.12
 .venv\Scripts\activate
-uv pip install -r requirements.txt
+uv pip sync requirements.lock          # exact tested versions
 
 # Install IDS peak SDK (manual step - see https://www.ids-imaging.com/)
 
@@ -364,7 +364,7 @@ uv venv --python 3.12
 source .venv/bin/activate
 
 # Install dependencies (very fast!)
-uv pip install -r requirements.txt
+uv pip sync requirements.lock          # exact tested versions
 
 # Run tests
 python -m pytest tests/ -v

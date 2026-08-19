@@ -40,7 +40,7 @@ strategy, error handling, git workflow, and the quality checklist. Read both.
 # Environment setup (first time)
 uv venv --python 3.12                        # Create virtual environment
 source .venv/bin/activate                    # Activate (macOS/Linux)
-uv pip install -r requirements.txt           # Install dependencies
+uv pip sync requirements.lock                # Install exact tested versions
 
 # Daily use
 source .venv/bin/activate                    # Activate environment
@@ -188,7 +188,7 @@ settings.get('camera.default_exposure', 15000)  # 15000µs fallback
 
 ### Essential Development Commands
 ```bash
-# Environment setup: uv venv --python 3.12 && uv pip install -r requirements.txt
+# Environment setup: uv venv --python 3.12 && uv pip sync requirements.lock
 # Run application:   python -m kalib.main
 # Testing:           python -m pytest tests/ -v
 # Linting:           pylint kalib/
