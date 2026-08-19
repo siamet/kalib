@@ -49,6 +49,26 @@ def test_turn_on_with_explicit_brightness(world):
     assert led.get_brightness() == 128
 
 
+def test_turn_on_no_args_restores_off_state(world):
+    """turn_on() with no argument after turn_off() keeps LED off."""
+    led = SimLED(world, brightness_range=(0, 255))
+    led.connect()
+    led.set_brightness(200)
+    led.turn_off()
+    assert led.get_brightness() == 0
+    led.turn_on()
+    assert led.get_brightness() == 0
+
+
+def test_turn_on_no_args_remembers_brightness(world):
+    """turn_on() with no argument remembers the current brightness level."""
+    led = SimLED(world)
+    led.connect()
+    led.set_brightness(180)
+    led.turn_on()
+    assert led.get_brightness() == 180
+
+
 def test_percent_round_trips(world):
     """Percentage helpers agree with raw values."""
     led = SimLED(world, brightness_range=(0, 200))
