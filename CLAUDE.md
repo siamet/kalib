@@ -3,9 +3,7 @@
 This file provides comprehensive guidance to Claude Code when working with this repository. It defines coding standards, development practices, and project-specific context that should persist across all sessions.
 
 ## 🎯 Quick Session Start
-- Use `/prime` for comprehensive project analysis and context updates
-- Current development focus: **[Set by /prime command]**
-- Active development phase: **[Set by /prime command]**
+- Use `/status` to check current progress and priorities
 
 ---
 
@@ -42,10 +40,9 @@ Avoid building functionality on speculation. Implement features only when they a
 ---
 
 ## 🛠️ Technology Stack & Environment
-**[Last updated: 2026-02-04 by /prime]**
 
 ### Primary Technologies
-- **Language**: Python 3.11+
+- **Language**: Python 3.12+
 - **Framework**: PySide6 (Qt6) - Modern GUI framework
 - **Hardware SDKs**:
   - IDS peak SDK (camera control)
@@ -58,7 +55,7 @@ Avoid building functionality on speculation. Implement features only when they a
 ### Development Environment
 **Environment Management**: uv
 **Package Manager**: uv pip (Rust-based, extremely fast)
-**Python Version**: 3.12.12
+**Python Version**: 3.12
 **Virtual Environment**: .venv
 
 ### Essential Commands
@@ -66,22 +63,16 @@ Avoid building functionality on speculation. Implement features only when they a
 # Environment setup (first time)
 uv venv --python 3.12                        # Create virtual environment
 source .venv/bin/activate                    # Activate (macOS/Linux)
-uv pip install -r requirements.txt           # Install dependencies (very fast!)
+uv pip install -r requirements.txt           # Install dependencies
 
 # Daily use
 source .venv/bin/activate                    # Activate environment
-./run_kalib.sh                              # Or use launcher script
+./run_kalib.sh                               # Or use launcher script
 
 # Development/Launch
 python -m kalib.main                         # Standard launch
 python -m kalib.main --log-level DEBUG       # Debug mode
 python -m kalib.main --config /path/to/config.yaml  # Custom config
-
-# Package management
-uv pip install <package>                     # Install single package
-uv pip install -r requirements.txt           # Install all dependencies
-uv pip list                                  # List packages
-uv pip freeze > requirements.txt             # Update requirements
 
 # Testing
 python -m pytest tests/ -v                   # All tests
@@ -158,7 +149,6 @@ Raises:
 ---
 
 ## 🔧 Project-Specific Context
-**[Last updated: 2026-02-04 by /prime]**
 
 ### Current Architecture
 **Kalib** is a production-ready microscopy control system built with clean MVC architecture:
@@ -172,6 +162,7 @@ Model Layer (State) + Hardware Layer (Device Abstraction)
 ```
 
 **Project Type**: Desktop Scientific Instrument Control Application
+**Status**: Version 2.0.0 - Production Ready ✅
 **Lines of Code**: ~8,509 lines across 40+ Python modules
 
 ### Key Files and Directories
@@ -179,7 +170,7 @@ Model Layer (State) + Hardware Layer (Device Abstraction)
 **Configuration**:
 - `config/default_config.yaml` - Default system settings (122 lines)
 - `config/settings.py` - YAML config loader with dot-notation access
-- `requirements.txt` - Python package dependencies
+- `environment.yml` - Conda environment specification
 
 **Application Entry**:
 - `kalib/main.py` - Application entry point, dependency injection
@@ -259,7 +250,7 @@ settings.get('camera.default_exposure', 15000)  # 15000µs fallback
 
 **GUI Framework**: PySide6 (Qt6) - Modern cross-platform GUI
 **Hardware SDKs**:
-- `ids-peak` - IDS camera SDK, extended version (requires manual installation)
+- `ids-peak` - IDS camera SDK (requires manual installation)
 - `pipython>=2.9.0` - PI motion controller library
 - `pyserial>=3.5` - Serial communication for LED
 
@@ -321,7 +312,7 @@ logger.error("Serious problem");
 ### Branch Strategy
 ```bash
 main              # Production-ready code
-dev               # Integration branch for features
+develop           # Integration branch for features
 feature/[name]    # Individual feature development
 hotfix/[name]     # Critical production fixes
 ```
@@ -363,12 +354,12 @@ Types: feat, fix, docs, style, refactor, test, chore
 
 ### Essential Development Commands
 ```bash
-# Auto-updated by /prime command based on project analysis
-# Environment setup: uv venv --python 3.12, uv pip install -r requirements.txt
-# Development server: python manage.py
-# Testing: pytest
-# Build: python setup.py build
-# Linting: flake8
+# Environment setup: uv venv --python 3.12 && uv pip install -r requirements.txt
+# Run application:   python -m kalib.main
+# Testing:           python -m pytest tests/ -v
+# Linting:           pylint kalib/
+# Formatting:        black kalib/ tests/
+# Type checking:     mypy kalib/
 ```
 
 ### Debugging Tools
@@ -380,40 +371,6 @@ Types: feat, fix, docs, style, refactor, test, chore
 
 ---
 
-## 🎯 Current Development Context
-**[Last updated: 2026-02-04 by /prime]**
-
-**Architecture Decision**: MVC Pattern
-- Chose MVC over alternatives (MVP, MVVM) for clear separation of concerns
-- Qt signals/slots provide natural event-driven communication
-- Models are UI-independent and fully testable
-
-**Hardware Abstraction**: Base class pattern
-- All hardware inherits from `HardwareDevice` abstract base
-- Standardized connection lifecycle: connect → initialize → cleanup
-- Context manager support for resource safety
-
-### Next Priorities
-1. **Integration Testing** - Add controller integration tests (currently ~60% coverage)
-2. **UI Testing** - Implement pytest-qt tests for views (currently ~40% coverage)
-3. **Feature Requests** - Ready to implement user-requested features
-4. **Bug Fixes** - Monitor and address any production issues
-
-### Known Issues & Blockers
-**No Critical Issues** - System is stable and production-ready
-
-**Enhancement Opportunities**:
-- REST API for remote control
-- Plugin system for custom algorithms
-- GPU-accelerated image processing
-- Multi-camera support
-
-**Documentation**:
-- All major documentation complete
-- Ready for additional examples or tutorials as needed
-
----
-
 ## ⚠️ Important Development Notes
 
 ### Critical Guidelines
@@ -422,8 +379,11 @@ Types: feat, fix, docs, style, refactor, test, chore
 - **Use project environment** (venv, node_modules, etc.) for all commands
 - **Test your code** - No feature is complete without tests
 - **Update documentation** when making architectural changes
+- **Follow the planning workflow** - use `/plan-feature` before coding
 
 ### Session Management
+- **Use `/clear`** when switching to completely different features
+- **Use `/update-planning`** to save progress and decisions
 - **Keep CLAUDE.md current** - update when patterns or practices change
 
 ### Quality Checklist
@@ -448,46 +408,16 @@ When analyzing code or debugging:
 
 ---
 
-## 📊 Project Statistics & Health
-
-### Code Metrics
-- **Total Python Files**: 40 modules + test suite
-- **Total Lines of Code**: ~8,509 lines
-- **Largest File**: 585 lines (ids_camera.py)
-- **Average File Size**: ~181 lines
-- **Documentation**: 1,200+ lines across 5 files
-- **Test Coverage**: >80% (models and algorithms), ~60% (controllers), ~40% (views)
-
-### File Size Compliance
-✅ All files under 500-line limit
-✅ Most functions under 50 lines
-✅ Clean separation of concerns
-
-### Code Quality
-- **Type Hints**: Comprehensive type annotations throughout
-- **Docstrings**: Google-style docstrings on all public APIs
-- **Error Handling**: Custom exception hierarchy with proper propagation
-- **Testing**: pytest-based with fixtures and mocking
-- **Logging**: Structured logging with daily rotation
-
-### Dependencies Status
-- **Python**: 3.11+ (current: 3.12.12) ✅
-- **PySide6**: >=6.5.0 (Qt6 framework) ✅
-- **Hardware SDKs**: IDS peak (manual install), pipython ✅
-- **Scientific Stack**: NumPy, SciPy, OpenCV, scikit-image ✅
-- **All dependencies**: Managed via uv
-
----
-
 ## 🎓 Learning Context for New Sessions
 
 ### Quick Session Start Checklist
 When starting a new session with this project:
 
 1. ✅ **Project Type**: Desktop scientific instrument control application
-2. ✅ **Language**: Python 3.11+ with type hints
+2. ✅ **Language**: Python 3.12+ with type hints
 3. ✅ **Architecture**: MVC pattern with Qt6/PySide6
-5. ✅ **Environment**: UV virtual environment (activate with `source .venv/bin/activate`)
+4. ✅ **Status**: Production-ready v2.0.0
+5. ✅ **Environment**: uv virtual environment (activate with `source .venv/bin/activate`)
 6. ✅ **Entry Point**: `python -m kalib.main`
 7. ✅ **Testing**: `python -m pytest tests/ -v`
 
@@ -559,9 +489,6 @@ class ScanWorker(QObject):
 
 ---
 
-*This document is automatically updated by `/prime` command and should be maintained as the project evolves.*
-
-**Last Updated**: 2026-02-04 by /prime command
-**Project Version**: 2026.02.01 (Production Ready)
-**Python Version**: 3.12.12
+**Project Version**: 2.0.0 (Production Ready)
+**Python Version**: 3.12
 **Environment**: .venv (uv)

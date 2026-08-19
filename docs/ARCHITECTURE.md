@@ -464,4 +464,4 @@ def test_camera_model_add_image():
 ---
 
 **Last Updated**: 2026-02-03
-**Version**: 2026.02.01
+**Version**: 2.0.0
