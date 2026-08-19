@@ -125,6 +125,7 @@ python -m kalib.main
 |----------|-------------|
 | **[USER_GUIDE.md](docs/USER_GUIDE.md)** | Complete user manual with tutorials (800+ lines) |
 | **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** | Technical architecture and design patterns (468+ lines) |
+| **[ENGINEERING-STANDARDS.md](docs/ENGINEERING-STANDARDS.md)** | Coding standards, workflow, and quality checklist |
 
 ### Quick Links
 - [Installation Guide](docs/USER_GUIDE.md#installation)
