@@ -10,6 +10,29 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-19-remote-operation-design.md`
 
+## Corrections Applied During Execution
+
+The task code blocks below were written before the real drivers were read
+closely, and several specified simulator behaviour that diverges from the
+hardware. Each was caught during execution and corrected in the committed
+implementation. **Where a task's code block disagrees with the committed
+code, the committed code is authoritative.**
+
+| Task | The plan said | The drivers actually do |
+|---|---|---|
+| 2 | `is_acquisition_running` as a method | `@property` (`ids_camera.py:621`) |
+| 2 | `capture()` raises `ConnectionError` when not acquiring | raises `CommandError` (`ids_camera.py:418`) |
+| 3 | no `_check_connected()` on `is_on_target`/`stop`/`set_velocity`/`get_velocity` (+ `reference` on Z) | all nine guard (`pi_stage_xy.py:313,330,349,370`; `pi_stage_z.py:272,289,308,328,344`) |
+| 3, 4 | out-of-range values raise `CommandError` | all three drivers CLAMP with a warning (`pi_stage_xy.py:198`, `pi_stage_z.py:174`, `led_driver.py:247`) |
+| 4 | `get_brightness()` guards with `_check_connected()` | unguarded (`led_driver.py:291`) |
+| 4 | `turn_on(None)` uses the range maximum | uses the remembered brightness (`led_driver.py:339-350`) |
+| 7 | injection alone is enough | the existing `if device_id is None:` guard blocks the injected path; it must become `device_id is None and self._injected_xy is None` |
+| 8 | `factory.create_camera()` called unconditionally | constructs `IDSCamera` eagerly, which raises `ImportError` at startup without the vendor SDK; real devices must stay lazy and be built only under the `sim` branch |
+
+The root cause of every entry above: the driver API was extracted with a
+grep of `def` lines, which dropped decorators and never read the method
+bodies. Read the driver source when writing a plan against it.
+
 ## Global Constraints
 
 - Python 3.12; dependencies installed with `uv pip sync requirements.lock`.
