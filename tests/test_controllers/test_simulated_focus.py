@@ -57,17 +57,45 @@ def test_sharpness_peaks_at_the_focal_plane():
     assert heights[scores.index(max(scores))] == pytest.approx(5.0)
 
 
+def _sharpness_peak_z(camera, stage, x, y, heights):
+    """Move to (x, y), sweep z, and return the height with peak sharpness.
+
+    Args:
+        camera: Connected, acquiring CameraController
+        stage: Connected StageController
+        x: X position to measure at
+        y: Y position to measure at
+        heights: Candidate Z heights to sweep through
+
+    Returns:
+        The height in `heights` at which captured-image sharpness peaks
+    """
+    stage.move_absolute(x=x, y=y)
+    scores = []
+    for z in heights:
+        stage.move_absolute(z=z)
+        scores.append(gradient_sharpness(camera.capture_image()))
+    return heights[scores.index(max(scores))]
+
+
 def test_focal_height_shifts_with_xy_when_the_sample_is_tilted():
     """A tilted sample focuses at different z depending on position.
 
-    This is the behaviour tilt calibration exists to measure.
+    This is the behaviour tilt calibration exists to measure, so it must be
+    observed through the camera - a simulator whose camera ignored focus
+    entirely would still pass a test that only checked the world's dataclass
+    arithmetic (that arithmetic is covered separately in
+    tests/test_hardware/test_sim_world.py).
     """
     camera, stage, world = _sim_rig(tilt_a=0.01, tilt_c=5.0)
 
-    stage.move_absolute(x=0.0, y=0.0)
-    focus_at_origin = world.focus_z()
+    # The sharpness peak is roughly 44x its neighbours one mm away (measured
+    # with this pattern and this tilt), so a 1 mm sweep resolution finds it
+    # reliably without flakiness.
+    peak_at_origin = _sharpness_peak_z(camera, stage, x=0.0, y=0.0,
+                                       heights=[3.0, 4.0, 5.0, 6.0, 7.0])
+    peak_at_far_x = _sharpness_peak_z(camera, stage, x=100.0, y=0.0,
+                                      heights=[4.0, 5.0, 6.0, 7.0, 8.0])
 
-    stage.move_absolute(x=100.0, y=0.0)
-    focus_at_far_x = world.focus_z()
-
-    assert focus_at_far_x - focus_at_origin == pytest.approx(1.0)
+    expected_shift = world.focus_z(100.0, 0.0) - world.focus_z(0.0, 0.0)
+    assert peak_at_far_x - peak_at_origin == pytest.approx(expected_shift)
