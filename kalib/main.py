@@ -129,11 +129,6 @@ class KalibApplication:
         xy_device_id = self.settings.get('stages.xy.device_id')
         z_device_id = self.settings.get('stages.z.device_id')
 
-        self.camera = CameraController(
-            device_idx=0,
-            device=factory.create_camera(device_idx=0)
-        )
-
         limits = StageLimits(
             x_min=self.settings.get('stages.xy.x_range[0]', 0.0),
             x_max=self.settings.get('stages.xy.x_range[1]', 100.0),
@@ -143,19 +138,35 @@ class KalibApplication:
             z_max=self.settings.get('stages.z.z_range[1]', 10.0)
         )
 
+        # Real drivers stay lazy: the controllers construct them at connect
+        # time, as they always have. Constructing here would raise
+        # ImportError at startup on machines without the vendor SDKs.
+        camera_device = None
+        xy_device = None
+        z_device = None
+        if factory.backend == 'sim':
+            camera_device = factory.create_camera(device_idx=0)
+            xy_device = factory.create_stage_xy(
+                device_id=xy_device_id,
+                x_range=(limits.x_min, limits.x_max),
+                y_range=(limits.y_min, limits.y_max)
+            )
+            z_device = factory.create_stage_z(
+                device_id=z_device_id,
+                z_range=(limits.z_min, limits.z_max)
+            )
+
+        self.camera = CameraController(
+            device_idx=0,
+            device=camera_device
+        )
+
         self.stage = StageController(
             xy_device_id=xy_device_id,
             z_device_id=z_device_id,
             limits=limits,
-            xy_device=factory.create_stage_xy(
-                device_id=xy_device_id,
-                x_range=(limits.x_min, limits.x_max),
-                y_range=(limits.y_min, limits.y_max)
-            ),
-            z_device=factory.create_stage_z(
-                device_id=z_device_id,
-                z_range=(limits.z_min, limits.z_max)
-            )
+            xy_device=xy_device,
+            z_device=z_device
         )
 
         self.scan = ScanController(
