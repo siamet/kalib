@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from kalib.algorithms.sharpness import gradient_sharpness
-from kalib.hardware.base import ConnectionError
+from kalib.hardware.base import CommandError
 from kalib.hardware.sim.sim_camera import SimCamera
 from kalib.hardware.sim.world import SimWorld
 
@@ -37,7 +37,7 @@ def test_capture_requires_acquisition_started(world):
     """Capturing before acquisition starts is an error, as on real hardware."""
     cam = SimCamera(world)
     cam.connect()
-    with pytest.raises(ConnectionError):
+    with pytest.raises(CommandError):
         cam.capture()
 
 

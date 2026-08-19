@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple
 import cv2
 import numpy as np
 
-from kalib.hardware.base import ConnectionError, HardwareDevice
+from kalib.hardware.base import CommandError, ConnectionError, HardwareDevice
 from kalib.hardware.sim.world import SimWorld
 
 
@@ -79,6 +79,7 @@ class SimCamera(HardwareDevice):
         """End acquisition."""
         self._acquiring = False
 
+    @property
     def is_acquisition_running(self) -> bool:
         """Return whether acquisition is active."""
         return self._acquiring
@@ -95,11 +96,12 @@ class SimCamera(HardwareDevice):
             Greyscale frame of shape (height, width), dtype uint8
 
         Raises:
-            ConnectionError: If acquisition has not been started
+            CommandError: If acquisition has not been started
+            ConnectionError: If device is not connected
         """
         self._check_connected()
         if not self._acquiring:
-            raise ConnectionError("Acquisition is not running")
+            raise CommandError("Acquisition not ready. Call start_acquisition() first.")
 
         sigma = self._world.defocus() * self.BLUR_PER_MM
         frame = self._pattern
