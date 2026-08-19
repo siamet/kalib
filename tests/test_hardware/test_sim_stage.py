@@ -1,0 +1,68 @@
+"""Tests for the simulated stages."""
+
+import pytest
+
+from kalib.hardware.base import CommandError
+from kalib.hardware.sim.sim_stage import SimStageXY, SimStageZ
+from kalib.hardware.sim.world import SimWorld
+
+
+@pytest.fixture
+def world():
+    return SimWorld(x=50.0, y=50.0, z=5.0)
+
+
+def test_xy_absolute_move_updates_world(world):
+    """Moving the simulated XY stage moves the shared world."""
+    stage = SimStageXY(world)
+    stage.connect()
+    stage.move_absolute(x=10.0, y=20.0)
+    assert world.x == pytest.approx(10.0)
+    assert world.y == pytest.approx(20.0)
+    assert stage.get_position() == (pytest.approx(10.0), pytest.approx(20.0))
+
+
+def test_xy_relative_move_is_additive(world):
+    """Relative moves add to the current position."""
+    stage = SimStageXY(world)
+    stage.connect()
+    stage.move_absolute(x=10.0, y=10.0)
+    stage.move_relative(dx=2.5, dy=-3.0)
+    assert stage.get_position() == (pytest.approx(12.5), pytest.approx(7.0))
+
+
+def test_xy_move_outside_range_is_rejected(world):
+    """Out-of-range moves raise rather than silently clamping."""
+    stage = SimStageXY(world, x_range=(0.0, 100.0), y_range=(0.0, 100.0))
+    stage.connect()
+    with pytest.raises(CommandError):
+        stage.move_absolute(x=150.0)
+
+
+def test_z_move_updates_world(world):
+    """Moving the simulated Z stage moves the shared world."""
+    stage = SimStageZ(world)
+    stage.connect()
+    stage.move_absolute(7.5)
+    assert world.z == pytest.approx(7.5)
+    assert stage.get_position() == pytest.approx(7.5)
+
+
+def test_z_move_outside_range_is_rejected(world):
+    """Z respects its configured range."""
+    stage = SimStageZ(world, z_range=(0.0, 10.0))
+    stage.connect()
+    with pytest.raises(CommandError):
+        stage.move_absolute(20.0)
+
+
+def test_stages_share_one_world(world):
+    """XY and Z stages act on the same world object."""
+    xy = SimStageXY(world)
+    z = SimStageZ(world)
+    xy.connect()
+    z.connect()
+    xy.move_absolute(x=1.0, y=2.0)
+    z.move_absolute(3.0)
+    assert (world.x, world.y, world.z) == (
+        pytest.approx(1.0), pytest.approx(2.0), pytest.approx(3.0))
