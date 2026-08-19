@@ -370,6 +370,21 @@ uv pip sync requirements.lock          # exact tested versions
 python -m pytest tests/ -v
 ```
 
+### Running Without Hardware
+
+The application can run against simulated devices, so development and
+testing need no instrument attached:
+
+```bash
+python -m kalib.main --simulate
+```
+
+The simulator models a sample on a tilted focal plane. Moving the
+simulated stage changes what the simulated camera sees, and frames blur in
+proportion to defocus, so autofocus and tilt calibration behave as they do
+on the instrument. Set `hardware.backend` to `sim` in configuration to make
+this the default.
+
 ### Code Style
 
 - **Python**: PEP 8 compliant

@@ -7,7 +7,7 @@ workflow management for positioning operations.
 from typing import Optional, Tuple
 from PySide6.QtCore import QObject, Signal
 
-from kalib.hardware import PIStageXY, PIStageZ, ConnectionError, CommandError
+from kalib.hardware import PIStageXY, PIStageZ, ConnectionError, CommandError, HardwareDevice
 from kalib.models import StageModel, StageLimits
 from kalib.utils.logger import get_logger
 
@@ -32,13 +32,17 @@ class StageController(QObject):
     def __init__(self,
                  xy_device_id: Optional[str] = None,
                  z_device_id: Optional[str] = None,
-                 limits: Optional[StageLimits] = None):
+                 limits: Optional[StageLimits] = None,
+                 xy_device: Optional[HardwareDevice] = None,
+                 z_device: Optional[HardwareDevice] = None):
         """Initialize stage controller.
 
         Args:
             xy_device_id: XY stage device ID
             z_device_id: Z stage device ID
             limits: Stage movement limits
+            xy_device: Pre-built XY stage to use instead of a PIStageXY
+            z_device: Pre-built Z stage to use instead of a PIStageZ
         """
         super().__init__()
 
@@ -46,12 +50,16 @@ class StageController(QObject):
 
         # Models and hardware
         self.model = StageModel(limits or StageLimits())
-        self._xy_stage: Optional[PIStageXY] = None
-        self._z_stage: Optional[PIStageZ] = None
+        self._xy_stage: Optional[HardwareDevice] = None
+        self._z_stage: Optional[HardwareDevice] = None
 
         # Device IDs
         self._xy_device_id = xy_device_id
         self._z_device_id = z_device_id
+
+        # Injected devices (used in place of constructing PIStageXY/PIStageZ)
+        self._injected_xy = xy_device
+        self._injected_z = z_device
 
     def connect_xy_stage(self, device_id: Optional[str] = None) -> bool:
         """Connect to XY stage.
@@ -67,7 +75,7 @@ class StageController(QObject):
             error_occurred: On connection failure
         """
         device_id = device_id or self._xy_device_id
-        if device_id is None:
+        if device_id is None and self._injected_xy is None:
             self.error_occurred.emit("No XY stage device ID configured")
             return False
 
@@ -75,11 +83,14 @@ class StageController(QObject):
             self._logger.info(f"Connecting to XY stage: {device_id}")
 
             # Create stage instance
-            self._xy_stage = PIStageXY(
-                device_id=device_id,
-                x_range=(self.model.limits.x_min, self.model.limits.x_max),
-                y_range=(self.model.limits.y_min, self.model.limits.y_max)
-            )
+            if self._injected_xy is not None:
+                self._xy_stage = self._injected_xy
+            else:
+                self._xy_stage = PIStageXY(
+                    device_id=device_id,
+                    x_range=(self.model.limits.x_min, self.model.limits.x_max),
+                    y_range=(self.model.limits.y_min, self.model.limits.y_max)
+                )
 
             # Connect
             self._xy_stage.connect()
@@ -148,7 +159,7 @@ class StageController(QObject):
             error_occurred: On connection failure
         """
         device_id = device_id or self._z_device_id
-        if device_id is None:
+        if device_id is None and self._injected_z is None:
             self.error_occurred.emit("No Z stage device ID configured")
             return False
 
@@ -156,10 +167,13 @@ class StageController(QObject):
             self._logger.info(f"Connecting to Z stage: {device_id}")
 
             # Create stage instance
-            self._z_stage = PIStageZ(
-                device_id=device_id,
-                z_range=(self.model.limits.z_min, self.model.limits.z_max)
-            )
+            if self._injected_z is not None:
+                self._z_stage = self._injected_z
+            else:
+                self._z_stage = PIStageZ(
+                    device_id=device_id,
+                    z_range=(self.model.limits.z_min, self.model.limits.z_max)
+                )
 
             # Connect
             self._z_stage.connect()

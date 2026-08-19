@@ -8,7 +8,7 @@ from typing import Optional
 from PySide6.QtCore import QObject, Signal
 import numpy as np
 
-from kalib.hardware import IDSCamera, ConnectionError, CommandError
+from kalib.hardware import IDSCamera, ConnectionError, CommandError, HardwareDevice
 from kalib.models import CameraModel, CameraSettings
 from kalib.utils.logger import get_logger
 
@@ -31,17 +31,22 @@ class CameraController(QObject):
 
     def __init__(self,
                  device_idx: int = 0,
-                 settings: Optional[CameraSettings] = None):
+                 settings: Optional[CameraSettings] = None,
+                 device: Optional[HardwareDevice] = None):
         """Initialize camera controller.
 
         Args:
             device_idx: Camera device index
             settings: Initial camera settings
+            device: Pre-built camera to use instead of constructing an
+                IDSCamera. Supplying this is how the simulated backend and
+                the tests avoid touching real hardware.
         """
         super().__init__()
 
         self._logger = get_logger(__name__)
         self._device_idx = device_idx
+        self._injected_device = device
 
         # Models and hardware
         self.model = CameraModel(settings or CameraSettings())
@@ -60,12 +65,16 @@ class CameraController(QObject):
         try:
             self._logger.info(f"Connecting to camera {self._device_idx}")
 
-            # Create camera instance
-            pixel_format = (8, "RGB")  # TODO: Get from settings
-            self._camera = IDSCamera(
-                device_idx=self._device_idx,
-                pixel_format=pixel_format
-            )
+            # Use the injected device when one was supplied, otherwise build
+            # the real driver.
+            if self._injected_device is not None:
+                self._camera = self._injected_device
+            else:
+                pixel_format = (8, "RGB")  # TODO: Get from settings
+                self._camera = IDSCamera(
+                    device_idx=self._device_idx,
+                    pixel_format=pixel_format
+                )
 
             # Connect
             self._camera.connect()
