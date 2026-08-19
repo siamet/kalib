@@ -166,13 +166,17 @@ class KalibApplication:
         """
         from kalib.models import StageLimits
 
+        xy_x_range = self.settings.get('stages.xy.x_range', [0.0, 100.0])
+        xy_y_range = self.settings.get('stages.xy.y_range', [0.0, 100.0])
+        z_range = self.settings.get('stages.z.z_range', [0.0, 10.0])
+
         return StageLimits(
-            x_min=self.settings.get('stages.xy.x_range[0]', 0.0),
-            x_max=self.settings.get('stages.xy.x_range[1]', 100.0),
-            y_min=self.settings.get('stages.xy.y_range[0]', 0.0),
-            y_max=self.settings.get('stages.xy.y_range[1]', 100.0),
-            z_min=self.settings.get('stages.z.z_range[0]', 0.0),
-            z_max=self.settings.get('stages.z.z_range[1]', 10.0)
+            x_min=xy_x_range[0],
+            x_max=xy_x_range[1],
+            y_min=xy_y_range[0],
+            y_max=xy_y_range[1],
+            z_min=z_range[0],
+            z_max=z_range[1]
         )
 
     def _build_sim_devices(self, factory: Any, xy_device_id: Optional[str],
