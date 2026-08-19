@@ -73,13 +73,15 @@ class SimStageXY(HardwareDevice):
         return x_clamped, y_clamped
 
     def move_absolute(self, x: Optional[float] = None,
-                      y: Optional[float] = None, wait: bool = True) -> None:
+                      y: Optional[float] = None, wait: bool = True,
+                      timeout: float = 30.0) -> None:
         """Move to an absolute position.
 
         Args:
             x: Target X in mm; unchanged if None
             y: Target Y in mm; unchanged if None
             wait: Accepted for API parity; simulated moves are instant
+            timeout: Accepted for API parity; simulated moves are instant
         """
         self._check_connected()
 
@@ -96,10 +98,11 @@ class SimStageXY(HardwareDevice):
         self._world.y = float(target_y)
 
     def move_relative(self, dx: float = 0.0, dy: float = 0.0,
-                      wait: bool = True) -> None:
+                      wait: bool = True, timeout: float = 30.0) -> None:
         """Move by a relative offset in mm."""
         self._check_connected()
-        self.move_absolute(x=self._world.x + dx, y=self._world.y + dy, wait=wait)
+        self.move_absolute(x=self._world.x + dx, y=self._world.y + dy,
+                           wait=wait, timeout=timeout)
 
     def get_position(self) -> Tuple[float, float]:
         """Return current position as (x, y) in mm."""
@@ -200,12 +203,14 @@ class SimStageZ(HardwareDevice):
 
         return z_clamped
 
-    def move_absolute(self, z: float, wait: bool = True) -> None:
+    def move_absolute(self, z: float, wait: bool = True,
+                      timeout: float = 30.0) -> None:
         """Move to an absolute Z position in mm.
 
         Args:
             z: Target Z in mm
             wait: Accepted for API parity; simulated moves are instant
+            timeout: Accepted for API parity; simulated moves are instant
         """
         self._check_connected()
 
@@ -214,10 +219,11 @@ class SimStageZ(HardwareDevice):
 
         self._world.z = float(z)
 
-    def move_relative(self, dz: float, wait: bool = True) -> None:
+    def move_relative(self, dz: float, wait: bool = True,
+                      timeout: float = 30.0) -> None:
         """Move by a relative offset in mm."""
         self._check_connected()
-        self.move_absolute(self._world.z + dz, wait=wait)
+        self.move_absolute(self._world.z + dz, wait=wait, timeout=timeout)
 
     def get_position(self) -> float:
         """Return current Z position in mm."""

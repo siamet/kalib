@@ -88,3 +88,21 @@ def test_z_reference_requires_connection(world):
     stage = SimStageZ(world)
     with pytest.raises(ConnectionError):
         stage.reference()
+
+
+def test_xy_moves_accept_timeout_parameter(world):
+    """XY moves accept timeout for parity with PIStageXY, and ignore it."""
+    stage = SimStageXY(world)
+    stage.connect()
+    stage.move_absolute(x=10.0, y=20.0, wait=True, timeout=60.0)
+    stage.move_relative(dx=1.0, dy=1.0, wait=True, timeout=60.0)
+    assert stage.get_position() == (pytest.approx(11.0), pytest.approx(21.0))
+
+
+def test_z_moves_accept_timeout_parameter(world):
+    """Z moves accept timeout for parity with PIStageZ, and ignore it."""
+    stage = SimStageZ(world)
+    stage.connect()
+    stage.move_absolute(7.5, wait=True, timeout=60.0)
+    stage.move_relative(0.5, wait=True, timeout=60.0)
+    assert stage.get_position() == pytest.approx(8.0)
