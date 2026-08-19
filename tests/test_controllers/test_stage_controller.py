@@ -39,3 +39,23 @@ def test_z_move_reaches_the_requested_position(controller, world):
     controller.connect_z_stage()
     controller.move_absolute(z=7.0)
     assert world.z == pytest.approx(7.0)
+
+
+def test_connect_xy_without_device_id_or_injection_fails():
+    """The real-hardware path still refuses to connect with no device ID."""
+    controller = StageController()
+    errors = []
+    controller.error_occurred.connect(errors.append)
+
+    assert controller.connect_xy_stage() is False
+    assert errors == ["No XY stage device ID configured"]
+
+
+def test_connect_z_without_device_id_or_injection_fails():
+    """The real-hardware path still refuses to connect with no device ID."""
+    controller = StageController()
+    errors = []
+    controller.error_occurred.connect(errors.append)
+
+    assert controller.connect_z_stage() is False
+    assert errors == ["No Z stage device ID configured"]
