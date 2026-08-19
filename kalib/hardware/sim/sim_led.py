@@ -17,7 +17,8 @@ class SimLED(HardwareDevice):
 
     def __init__(self, world: SimWorld, port: Optional[str] = None,
                  name: Optional[str] = None,
-                 brightness_range: Tuple[int, int] = (0, 255)):
+                 brightness_range: Tuple[int, int] = (0, 255),
+                 default_brightness: int = 128):
         """Initialize the simulated LED controller.
 
         Args:
@@ -25,11 +26,14 @@ class SimLED(HardwareDevice):
             port: Present for parity with LEDDriver
             name: Human-readable device name
             brightness_range: (minimum, maximum) brightness in device units
+            default_brightness: Brightness set on initialize, mirroring
+                LEDDriver's default_brightness
         """
         super().__init__(device_id=port or "SIM-LED", name=name or "Sim_LED")
         self._world = world
         self._port = port or "SIM-LED"
         self._range = brightness_range
+        self._default_brightness = default_brightness
 
     def _do_connect(self) -> None:
         """Connect to the simulated LED controller."""
@@ -40,7 +44,7 @@ class SimLED(HardwareDevice):
 
     def _do_initialize(self) -> None:
         """Initialize the simulated LED controller."""
-        self._world.led_brightness = 0
+        self._world.led_brightness = self._default_brightness
 
     def set_brightness(self, brightness: int) -> None:
         """Set brightness in raw device units.
@@ -74,8 +78,12 @@ class SimLED(HardwareDevice):
         return (self.get_brightness() - low) / (high - low) * 100.0
 
     def get_current_ma(self) -> float:
-        """Return a plausible drive current in milliamps."""
-        return self.get_brightness() * 0.5
+        """Return estimated drive current in milliamps.
+
+        Uses the same formula as LEDDriver.get_current_ma so calibration
+        performed in simulation matches the instrument.
+        """
+        return self.get_brightness() / 4096 * 293
 
     def turn_off(self) -> None:
         """Switch the LED off."""

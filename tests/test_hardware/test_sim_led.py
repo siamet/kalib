@@ -76,3 +76,22 @@ def test_percent_round_trips(world):
     led.set_brightness_percent(50.0)
     assert led.get_brightness() == 100
     assert led.get_brightness_percent() == pytest.approx(50.0)
+
+
+def test_current_ma_matches_led_driver_formula(world):
+    """get_current_ma uses the same brightness/4096*293 formula as LEDDriver.
+
+    A 7x divergence here would mean code calibrated in simulation is wrong
+    on the instrument, so this pins the two formulas together.
+    """
+    led = SimLED(world, brightness_range=(0, 4096))
+    led.connect()
+    led.set_brightness(2048)
+    assert led.get_current_ma() == pytest.approx(2048 / 4096 * 293)
+
+
+def test_connect_applies_default_brightness(world):
+    """Connecting sets brightness to the configured default, like LEDDriver."""
+    led = SimLED(world, default_brightness=64)
+    led.connect()
+    assert led.get_brightness() == 64

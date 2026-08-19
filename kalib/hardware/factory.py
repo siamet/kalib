@@ -90,9 +90,21 @@ class HardwareFactory:
         return PIStageZ(device_id=device_id, **kwargs)
 
     def create_led(self, port: Optional[str] = None) -> HardwareDevice:
-        """Build an LED controller for the configured backend."""
+        """Build an LED controller for the configured backend.
+
+        Both backends are built from the same configured brightness range
+        and default brightness, so code calibrated against one starts from
+        the same scale on the other.
+        """
+        brightness_range = tuple(
+            self._settings.get('led.brightness_range', (0, 255)))
+        default_brightness = self._settings.get('led.default_brightness', 128)
+
         if self._backend == SIM:
             from kalib.hardware.sim.sim_led import SimLED
-            return SimLED(self._world, port=port)
+            return SimLED(self._world, port=port,
+                          brightness_range=brightness_range,
+                          default_brightness=default_brightness)
         from kalib.hardware.led_driver import LEDDriver
-        return LEDDriver(port=port)
+        return LEDDriver(port=port, brightness_range=brightness_range,
+                         default_brightness=default_brightness)

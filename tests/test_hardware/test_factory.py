@@ -53,3 +53,14 @@ def test_unknown_backend_is_rejected():
     from kalib.hardware.base import ConfigurationError
     with pytest.raises(ConfigurationError):
         HardwareFactory(FakeSettings({'hardware.backend': 'pretend'}))
+
+
+def test_create_led_uses_configured_brightness_scale(sim_settings):
+    """The sim LED starts from the same configured scale as the real one."""
+    sim_settings._values['led.brightness_range'] = [0, 4096]
+    sim_settings._values['led.default_brightness'] = 2048
+    factory = HardwareFactory(sim_settings)
+    led = factory.create_led()
+    led.connect()
+    assert led.brightness_range == (0, 4096)
+    assert led.get_brightness() == 2048
