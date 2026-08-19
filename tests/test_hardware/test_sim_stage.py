@@ -2,7 +2,7 @@
 
 import pytest
 
-from kalib.hardware.base import CommandError
+from kalib.hardware.base import CommandError, ConnectionError
 from kalib.hardware.sim.sim_stage import SimStageXY, SimStageZ
 from kalib.hardware.sim.world import SimWorld
 
@@ -66,3 +66,17 @@ def test_stages_share_one_world(world):
     z.move_absolute(3.0)
     assert (world.x, world.y, world.z) == (
         pytest.approx(1.0), pytest.approx(2.0), pytest.approx(3.0))
+
+
+def test_xy_operations_require_connection(world):
+    """XY stage operations raise ConnectionError when not connected."""
+    stage = SimStageXY(world)
+    with pytest.raises(ConnectionError):
+        stage.stop()
+
+
+def test_z_reference_requires_connection(world):
+    """Z stage reference() raises ConnectionError when not connected."""
+    stage = SimStageZ(world)
+    with pytest.raises(ConnectionError):
+        stage.reference()

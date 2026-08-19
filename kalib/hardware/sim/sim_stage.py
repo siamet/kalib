@@ -98,17 +98,21 @@ class SimStageXY(HardwareDevice):
 
     def is_on_target(self) -> bool:
         """Return True; simulated moves complete immediately."""
+        self._check_connected()
         return True
 
     def stop(self) -> None:
         """Stop motion. A no-op, since simulated moves are instant."""
+        self._check_connected()
 
     def set_velocity(self, velocity: float) -> None:
         """Set velocity in mm/s."""
+        self._check_connected()
         self._velocity = float(velocity)
 
     def get_velocity(self) -> Tuple[float, float]:
         """Return velocity for both axes in mm/s."""
+        self._check_connected()
         return (self._velocity, self._velocity)
 
     @property
@@ -191,21 +195,26 @@ class SimStageZ(HardwareDevice):
 
     def is_on_target(self) -> bool:
         """Return True; simulated moves complete immediately."""
+        self._check_connected()
         return True
 
     def stop(self) -> None:
         """Stop motion. A no-op, since simulated moves are instant."""
+        self._check_connected()
 
     def set_velocity(self, velocity: float) -> None:
         """Set velocity in mm/s."""
+        self._check_connected()
         self._velocity = float(velocity)
 
     def get_velocity(self) -> float:
         """Return velocity in mm/s."""
+        self._check_connected()
         return self._velocity
 
     def reference(self) -> None:
         """Reference the axis. Always succeeds in simulation."""
+        self._check_connected()
         self._referenced = True
 
     @property
