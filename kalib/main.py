@@ -6,7 +6,7 @@ Initializes the application, creates controllers, and launches the main window.
 import sys
 import argparse
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional, Tuple
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 
@@ -118,7 +118,6 @@ class KalibApplication:
         self._logger.info("Initializing controllers...")
 
         from kalib.hardware import HardwareFactory
-        from kalib.models import StageLimits
 
         if self._simulate:
             self.settings.set('hardware.backend', 'sim')
@@ -128,33 +127,11 @@ class KalibApplication:
 
         xy_device_id = self.settings.get('stages.xy.device_id')
         z_device_id = self.settings.get('stages.z.device_id')
+        limits = self._build_stage_limits()
 
-        limits = StageLimits(
-            x_min=self.settings.get('stages.xy.x_range[0]', 0.0),
-            x_max=self.settings.get('stages.xy.x_range[1]', 100.0),
-            y_min=self.settings.get('stages.xy.y_range[0]', 0.0),
-            y_max=self.settings.get('stages.xy.y_range[1]', 100.0),
-            z_min=self.settings.get('stages.z.z_range[0]', 0.0),
-            z_max=self.settings.get('stages.z.z_range[1]', 10.0)
+        camera_device, xy_device, z_device = self._build_sim_devices(
+            factory, xy_device_id, z_device_id, limits
         )
-
-        # Real drivers stay lazy: the controllers construct them at connect
-        # time, as they always have. Constructing here would raise
-        # ImportError at startup on machines without the vendor SDKs.
-        camera_device = None
-        xy_device = None
-        z_device = None
-        if factory.backend == 'sim':
-            camera_device = factory.create_camera(device_idx=0)
-            xy_device = factory.create_stage_xy(
-                device_id=xy_device_id,
-                x_range=(limits.x_min, limits.x_max),
-                y_range=(limits.y_min, limits.y_max)
-            )
-            z_device = factory.create_stage_z(
-                device_id=z_device_id,
-                z_range=(limits.z_min, limits.z_max)
-            )
 
         self.camera = CameraController(
             device_idx=0,
@@ -180,6 +157,58 @@ class KalibApplication:
         )
 
         self._logger.info("Controllers initialized")
+
+    def _build_stage_limits(self) -> Any:
+        """Build stage movement limits from configuration.
+
+        Returns:
+            Configured StageLimits, defaulting to the standard XY/Z ranges
+        """
+        from kalib.models import StageLimits
+
+        return StageLimits(
+            x_min=self.settings.get('stages.xy.x_range[0]', 0.0),
+            x_max=self.settings.get('stages.xy.x_range[1]', 100.0),
+            y_min=self.settings.get('stages.xy.y_range[0]', 0.0),
+            y_max=self.settings.get('stages.xy.y_range[1]', 100.0),
+            z_min=self.settings.get('stages.z.z_range[0]', 0.0),
+            z_max=self.settings.get('stages.z.z_range[1]', 10.0)
+        )
+
+    def _build_sim_devices(self, factory: Any, xy_device_id: Optional[str],
+                            z_device_id: Optional[str], limits: Any
+                            ) -> Tuple[Any, Any, Any]:
+        """Build simulated devices for the sim backend.
+
+        Real drivers stay lazy: the controllers construct them at connect
+        time, as they always have. Constructing here would raise
+        ImportError at startup on machines without the vendor SDKs, so
+        this only builds devices when the sim backend is selected.
+
+        Args:
+            factory: Configured hardware factory
+            xy_device_id: XY stage device ID from configuration
+            z_device_id: Z stage device ID from configuration
+            limits: Stage movement limits
+
+        Returns:
+            Tuple of (camera, xy stage, z stage) devices, all None unless
+            the factory backend is 'sim'
+        """
+        if factory.backend != 'sim':
+            return None, None, None
+
+        camera_device = factory.create_camera(device_idx=0)
+        xy_device = factory.create_stage_xy(
+            device_id=xy_device_id,
+            x_range=(limits.x_min, limits.x_max),
+            y_range=(limits.y_min, limits.y_max)
+        )
+        z_device = factory.create_stage_z(
+            device_id=z_device_id,
+            z_range=(limits.z_min, limits.z_max)
+        )
+        return camera_device, xy_device, z_device
 
     def run(self) -> int:
         """Run application.
