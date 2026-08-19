@@ -18,6 +18,7 @@ from kalib.hardware.ids_camera import IDSCamera
 from kalib.hardware.pi_stage_xy import PIStageXY
 from kalib.hardware.pi_stage_z import PIStageZ
 from kalib.hardware.led_driver import LEDDriver
+from kalib.hardware.factory import HardwareFactory
 
 __all__ = [
     # Base classes and exceptions
@@ -34,4 +35,7 @@ __all__ = [
     'PIStageXY',
     'PIStageZ',
     'LEDDriver',
+
+    # Factory
+    'HardwareFactory',
 ]

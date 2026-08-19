@@ -11,6 +11,10 @@ camera:
   pixel_format: "RGB8"            # Pixel format for camera
   auto_exposure: false            # Enable auto exposure by default
 
+# Hardware Backend
+hardware:
+  backend: "real"                 # "real" for the instrument, "sim" for simulated devices
+
 # Motion Stage Configuration
 stages:
   xy:
