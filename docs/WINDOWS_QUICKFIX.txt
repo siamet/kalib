@@ -11,19 +11,22 @@ SOLUTION (Try in order):
    Run as Administrator → Restart computer → Try again
 
 2. REINSTALL PYSIDE6 WITH STABLE VERSION
-   conda activate kalib
-   pip uninstall PySide6 -y
-   pip install PySide6==6.6.3.1
+   .venv\Scripts\activate
+   uv pip uninstall PySide6
+   uv pip install PySide6==6.6.3.1
    python -c "from PySide6.QtWidgets import QApplication; print('OK')"
 
-3. USE WINDOWS-OPTIMIZED ENVIRONMENT
-   conda deactivate
-   conda env remove -n kalib
-   conda env create -f environment_windows.yml
-   conda activate kalib
+3. RECREATE THE ENVIRONMENT FROM SCRATCH
+   rmdir /s /q .venv
+   uv venv --python 3.12
+   .venv\Scripts\activate
+   uv pip install -r requirements.txt
+
+   If DLL errors persist, try Python 3.11 instead of 3.12:
+   uv venv --python 3.11
 
 4. FULL TROUBLESHOOTING GUIDE
-   See WINDOWS_SETUP.md for comprehensive solutions
+   See docs/WINDOWS_SETUP.md for comprehensive solutions
 
 ================================================================================
 QUICK TEST:

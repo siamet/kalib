@@ -86,7 +86,8 @@ Model Layer (State) + Hardware Layer (Device Abstraction)
 **Configuration**:
 - `config/default_config.yaml` - Default system settings (122 lines)
 - `config/settings.py` - YAML config loader with dot-notation access
-- `environment.yml` - Conda environment specification
+- `requirements.txt` - Python dependencies (installed with uv)
+- `.python-version` - Python version pin for uv (3.12)
 
 **Application Entry**:
 - `kalib/main.py` - Application entry point, dependency injection
