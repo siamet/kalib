@@ -135,3 +135,6 @@ dmypy.json
 
 # Deployment target (machine-specific)
 .env.deploy
+
+# Git worktrees
+.worktrees/
