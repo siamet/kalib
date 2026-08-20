@@ -21,6 +21,23 @@ class FakeSettings:
         return self._values.get(key, default)
 
 
+class _FailingCameraDevice:
+    """A stub whose connect() raises an exception connect_camera() does
+    not catch internally, standing in for IDSCamera's constructor raising
+    ImportError when the vendor SDK is not installed -- without a real
+    CameraController ever touching the vendor SDK or the real hardware.
+
+    Deliberately NOT kalib.hardware.base.ConnectionError: connect_camera()
+    already catches that one internally and returns False cleanly, which
+    would not exercise fix 3's per-device isolation at all -- the whole
+    point of this stub is an exception type that escapes connect_camera()
+    uncaught, the same way ImportError does for a real IDSCamera.
+    """
+
+    def connect(self) -> None:
+        raise RuntimeError("simulated device failure")
+
+
 @pytest.fixture
 def registry():
     """A registry over connected simulated hardware."""
@@ -85,15 +102,26 @@ def test_connect_succeeds_on_fresh_hardware():
 def test_connect_isolates_a_camera_that_fails_outside_its_own_try_except():
     """One device failing to connect must not prevent the others.
 
-    connect_camera() only catches ConnectionError internally; IDSCamera's
-    constructor raises a plain ImportError when the vendor SDK is not
-    installed (true of this dev environment -- IDS_AVAILABLE is False
-    here), which used to propagate out of the `connect` command before the
-    stages were ever attempted. connect must evaluate each device in its
+    connect_camera() only catches kalib.hardware.base.ConnectionError
+    internally; any other exception raised while connecting -- e.g.
+    IDSCamera's constructor raising a plain ImportError when the vendor
+    SDK is not installed -- used to propagate out of the `connect` command
+    before the stages were ever attempted, since it evaluated a plain
+    dict literal left to right. connect must evaluate each device in its
     own try so the stages still connect regardless.
+
+    Uses a stub device (_FailingCameraDevice) rather than a real,
+    uninjected CameraController(). A prior version of this test built a
+    real IDSCamera and relied on ImportError because the vendor SDK
+    happens not to be installed in this dev environment -- but on the
+    Windows instrument machine, exactly where this suite would run to
+    validate a deployment, the SDK *is* installed, so that version would
+    have gone on to actually open the real camera hardware. The stub
+    reaches connect_camera()'s same uncaught-exception path with no
+    hardware access at all.
     """
     factory = HardwareFactory(FakeSettings({'hardware.backend': 'sim'}))
-    camera = CameraController()  # No injected device: builds a real IDSCamera.
+    camera = CameraController(device=_FailingCameraDevice())
     stage = StageController(xy_device=factory.create_stage_xy(),
                             z_device=factory.create_stage_z())
     registry = CommandRegistry(camera=camera, stage=stage, scan=None,
