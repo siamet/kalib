@@ -178,7 +178,7 @@ was running.
 
 `snap` writes a TIFF plus a JSON metadata sidecar to the instrument's own
 disk and returns the file path — it never returns pixels, because a full
-frame is 36 MB and the command channel is for control, not bulk transfer.
+frame is 12 MB and the command channel is for control, not bulk transfer.
 Fetch the files with `scp`:
 
 ```bash
@@ -212,10 +212,37 @@ a base64-encoded `jpeg_base64` field.
 ### Live preview and continuous viewing
 
 > Live preview renders on the instrument's own screen and never crosses the
-> network. A full frame is 36 MB; a gigabit link carries about 118 MB/s, so
-> streaming full-resolution video is not possible at any useful frame rate. Use
-> `preview` for a quick look, and RDP to the instrument when you want to watch
-> continuously.
+> network. A full frame is 12 MB and the sensor runs at 33.2 fps, so full-rate
+> acquisition is about 400 MB/s — more than three times what a gigabit link
+> carries, and roughly a thousand times the link this deployment actually has
+> (see below). Streaming full resolution is not possible at any useful frame
+> rate. Use `preview` for a quick look, and RDP to the instrument when you want
+> to watch continuously.
+
+## What the link can actually carry
+
+Measured between the development machine and the instrument over Tailscale
+(a direct connection, 24 ms round trip — the two machines are on different
+networks, not a shared LAN):
+
+| Operation | Size | Time |
+|---|---|---|
+| `deploy.sh` package sync | ~1.5 MB | ~2.4 s |
+| `preview` response | ~120 KB | ~0.3 s |
+| One `snap` fetched by `scp` | 12 MB | **~27 s** |
+| A 100-frame scan | 1.2 GB | **~45 min** |
+
+Roughly **0.44 MB/s**, measured twice. Two consequences worth planning around:
+
+- Interactive work — moving, focusing, previewing, snapping — is comfortable,
+  because none of it moves bulk data across the link.
+- **Retrieving a whole scan is impractical.** Leave scan output on the
+  instrument's disk and pull only the frames you need, or collect the disk
+  another way. A scan that takes twenty minutes to acquire can take twice
+  that to copy back.
+
+Measure your own link before relying on these figures; they describe one
+deployment, not a guarantee.
 
 ## Scan jobs and polling
 
