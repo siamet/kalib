@@ -17,15 +17,16 @@ Kalib is a comprehensive microscopy control system built with clean MVC architec
 - **IDS uEye Cameras** - Full control via IDS peak SDK
 - **PI E-725 XY Stage** - High-precision XY motion control
 - **PI E-816.DB Z Stage** - Focus control with piezo actuator
-- **LED Illumination** - Serial-controlled brightness
+- **LED Illumination** - serial driver exists (`led_driver.py`), but no controller or UI drives it yet
 
 ### Core Capabilities
 - **XY Scanning** - Automated grid scanning with position tracking
 - **Z-Stack Scanning** - Multiple focus planes for 3D reconstruction
 - **Tilt Calibration** - 4 or 9-point calibration with automatic Z correction
 - **Autofocus** - Multiple sharpness metrics (Gradient, Sobel, Laplacian, Variance)
-- **Shape from Focus (SFF)** - Advanced depth profiling
 - **Live View** - Real-time camera feed with adjustable exposure/gain
+- **Remote Operation** - drive the instrument over SSH; see [REMOTE_OPERATION.md](docs/REMOTE_OPERATION.md)
+- **Simulated Hardware** - run the whole application with no instrument attached (`--simulate`)
 
 ### Modern Architecture
 - **MVC Pattern** - Clean separation of Models, Views, Controllers
@@ -123,8 +124,8 @@ python -m kalib.main
 
 | Document | Description |
 |----------|-------------|
-| **[USER_GUIDE.md](docs/USER_GUIDE.md)** | Complete user manual with tutorials (800+ lines) |
-| **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** | Technical architecture and design patterns (468+ lines) |
+| **[USER_GUIDE.md](docs/USER_GUIDE.md)** | Complete user manual with tutorials |
+| **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** | Technical architecture and design patterns |
 | **[ENGINEERING-STANDARDS.md](docs/ENGINEERING-STANDARDS.md)** | Coding standards, workflow, and quality checklist |
 
 ### Quick Links
@@ -281,10 +282,14 @@ python -m pytest tests/ --cov=kalib --cov-report=html
 
 | Component | Coverage | Status |
 |-----------|----------|--------|
-| Models | ~85% | ✅ Good |
-| Algorithms | ~80% | ✅ Good |
-| Controllers | none | ❌ No tests yet |
-| Views | none | ❌ No tests yet |
+| Server / CLI | 93-100% | ✅ Good |
+| Models | 60-91% | ⚠️ scan_model is the weak point |
+| Controllers | 47-84% | ⚠️ scan_controller is the weak point |
+| Algorithms | 63-71% | ⚠️ Partial |
+| Views | 7-15% | ❌ Barely tested |
+
+Overall **47%** (`pytest --cov=kalib`, measured 2026-08-21). The GUI layer is
+essentially untested; everything reachable without a Qt widget is covered well.
 
 ---
 
@@ -336,14 +341,10 @@ settings.save()
 
 ## 📊 Project Statistics
 
-| Metric | Value |
-|--------|-------|
-| **Total Python Files** | 47 modules + 3+ test modules |
-| **Total Lines of Code** | ~8,509 lines |
-| **Largest File** | 585 lines (ids_camera.py) |
-| **Average File Size** | ~181 lines |
-| **Documentation** | 1,200+ lines across 5 files |
-| **Test Coverage** | >80% (models and algorithms) |
+Run `find kalib -name '*.py' | wc -l` and `pytest --cov=kalib` for current
+figures — hardcoding them here has meant they were wrong more often than right.
+
+As of 2026-08-21: 48 modules, ~10,900 lines, 184 tests, 47% coverage.
 
 ---
 
@@ -484,9 +485,8 @@ See [USER_GUIDE.md#troubleshooting](docs/USER_GUIDE.md#troubleshooting) for comp
 - ✅ YAML-based configuration system
 - ✅ Structured logging with rotation
 - ✅ Comprehensive error handling
-- ✅ Unit test suite with >80% coverage
+- ✅ Unit test suite (47% overall; server and CLI 93-100%, GUI largely untested)
 - ✅ Modern themed UI (dark/light)
-- ✅ 1,200+ lines of documentation
 
 **Features**:
 - ✅ All v1.x features preserved

@@ -79,12 +79,12 @@ Model Layer (State) + Hardware Layer (Device Abstraction)
 
 **Project Type**: Desktop Scientific Instrument Control Application
 **Status**: Version 2.0.0 - Production Ready ✅
-**Lines of Code**: ~8,509 lines across 40+ Python modules
+**Size**: run `find kalib -name '*.py' | wc -l` for current figures; as of 2026-08-21, 48 modules and ~10,900 lines
 
 ### Key Files and Directories
 
 **Configuration**:
-- `config/default_config.yaml` - Default system settings (122 lines)
+- `config/default_config.yaml` - Default system settings 
 - `config/settings.py` - YAML config loader with dot-notation access
 - `requirements.txt` - Python dependencies (installed with uv)
 - `.python-version` - Python version pin for uv (3.12)
@@ -114,10 +114,19 @@ Model Layer (State) + Hardware Layer (Device Abstraction)
 
 **Hardware Drivers**:
 - `kalib/hardware/base.py` - Abstract base class with connection lifecycle
-- `kalib/hardware/ids_camera.py` - IDS uEye camera driver (585 lines)
+- `kalib/hardware/ids_camera.py` - IDS uEye camera driver 
 - `kalib/hardware/pi_stage_xy.py` - PI E-725 XY stage
 - `kalib/hardware/pi_stage_z.py` - PI E-816.DB Z stage
-- `kalib/hardware/led_driver.py` - Serial LED controller
+- `kalib/hardware/led_driver.py` - Serial LED driver (no controller drives it yet)
+- `kalib/hardware/sim/` - Simulated devices sharing one SimWorld
+- `kalib/hardware/factory.py` - Builds real or simulated devices from config
+
+**Remote Operation**:
+- `kalib/server/protocol.py` - Newline-delimited JSON wire protocol
+- `kalib/server/commands.py` - CommandRegistry and the dispatch table
+- `kalib/server/handlers.py`, `handlers_scan.py` - Command handlers
+- `kalib/server/daemon.py` - QTcpServer bound to 127.0.0.1
+- `kalib/cli/client.py` - Thin client driven over SSH
 
 **Algorithms**:
 - `kalib/algorithms/sharpness.py` - Focus quality metrics (gradient, Sobel, Laplacian, variance)
@@ -128,15 +137,17 @@ Model Layer (State) + Hardware Layer (Device Abstraction)
 - `kalib/utils/image_utils.py` - Image processing utilities
 
 **Tests**:
-- `tests/test_models/` - Model unit tests (>80% coverage)
+- `tests/test_models/` - Model unit tests
 - `tests/test_algorithms/` - Algorithm tests
+- `tests/test_server/` - Wire protocol, command registry, daemon and CLI
+- `tests/test_controllers/` - Controller tests against the simulated backend
 - `tests/test_hardware/` - Hardware abstraction tests
 - `tests/conftest.py` - Shared pytest fixtures
 
 **Documentation**:
-- `README.md` - Project overview, quick start, examples (503 lines)
-- `ARCHITECTURE.md` - Technical architecture documentation (468 lines)
-- `USER_GUIDE.md` - Complete user manual with tutorials (800+ lines)
+- `README.md` - Project overview, quick start, examples 
+- `ARCHITECTURE.md` - Technical architecture documentation 
+- `USER_GUIDE.md` - Complete user manual with tutorials 
 - `CLAUDE.md` - AI development context (this file)
 
 ### Hardware Configuration
@@ -146,7 +157,10 @@ Model Layer (State) + Hardware Layer (Device Abstraction)
 - **Camera**: IDS uEye cameras (via IDS peak SDK)
 - **XY Stage**: PI E-725 controller (device ID: "113068710")
 - **Z Stage**: PI E-816.DB controller (device ID: "112064239")
-- **LED**: Serial-controlled illumination
+- **LED**: Serial driver present; not wired to any controller
+
+**Units**: stage positions, steps and travel are **micrometres**. The E-725 drives a P-733.2CD (100 um XY); the E-816.DB gives 10 um in Z.
+**Camera**: U3-389xCP-M is **monochrome** - a frame is 4000x3000x1 = 12 MB. Leave `camera.pixel_format` on `auto` unless you know why not.
 
 **Configuration System**:
 All hardware settings stored in YAML with dot-notation access:
@@ -161,7 +175,12 @@ settings.get('camera.default_exposure', 15000)  # 15000µs fallback
 **Z-Stack Scanning**: Multiple focus planes for 3D reconstruction
 **Tilt Calibration**: 4 or 9-point calibration with automatic Z correction
 **Autofocus**: Multiple sharpness metrics (Gradient, Sobel, Laplacian, Variance)
-**Shape from Focus (SFF)**: Advanced depth profiling
+**Remote Operation**: `--serve` exposes 20 commands over a loopback socket, driven by `python -m kalib.cli` over SSH
+**Simulated Hardware**: `--simulate` runs everything with no instrument attached
+
+Note: `SFFScanParameters` and a `SFF_SCAN` enum exist, but no SFF scan is
+implemented — `ScanWorker` runs only XY and Z-stack. Do not describe it as a
+feature until `run_sff_scan` exists.
 
 ### External Dependencies
 
