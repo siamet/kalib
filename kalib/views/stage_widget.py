@@ -63,7 +63,7 @@ class StageWidget(QWidget):
         # Current position display
         pos_layout = QHBoxLayout()
         pos_layout.addWidget(QLabel("Current Position:"))
-        self.xy_position_label = QLabel("X: 0.000 mm, Y: 0.000 mm")
+        self.xy_position_label = QLabel("X: 0.000 µm, Y: 0.000 µm")
         self.xy_position_label.setStyleSheet("font-weight: bold;")
         pos_layout.addWidget(self.xy_position_label)
         pos_layout.addStretch()
@@ -71,7 +71,7 @@ class StageWidget(QWidget):
 
         # Step size
         step_layout = QHBoxLayout()
-        step_layout.addWidget(QLabel("Step Size (mm):"))
+        step_layout.addWidget(QLabel("Step Size (µm):"))
         self.step_size_spin = QDoubleSpinBox()
         self.step_size_spin.setDecimals(3)
         self.step_size_spin.setMinimum(0.001)
@@ -141,7 +141,7 @@ class StageWidget(QWidget):
         # Current Z position
         z_pos_layout = QHBoxLayout()
         z_pos_layout.addWidget(QLabel("Current Z Position:"))
-        self.z_position_label = QLabel("0.000 mm")
+        self.z_position_label = QLabel("0.000 µm")
         self.z_position_label.setStyleSheet("font-weight: bold;")
         z_pos_layout.addWidget(self.z_position_label)
         z_pos_layout.addStretch()
@@ -149,7 +149,7 @@ class StageWidget(QWidget):
 
         # Z step size
         z_step_layout = QHBoxLayout()
-        z_step_layout.addWidget(QLabel("Z Step Size (mm):"))
+        z_step_layout.addWidget(QLabel("Z Step Size (µm):"))
         self.z_step_size_spin = QDoubleSpinBox()
         self.z_step_size_spin.setDecimals(3)
         self.z_step_size_spin.setMinimum(0.001)
@@ -271,8 +271,8 @@ class StageWidget(QWidget):
             y: Y position
             z: Z position
         """
-        self.xy_position_label.setText(f"X: {x:.3f} mm, Y: {y:.3f} mm")
-        self.z_position_label.setText(f"{z:.3f} mm")
+        self.xy_position_label.setText(f"X: {x:.3f} µm, Y: {y:.3f} µm")
+        self.z_position_label.setText(f"{z:.3f} µm")
 
         # Update spin boxes
         self.target_x_spin.setValue(x)

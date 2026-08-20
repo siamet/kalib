@@ -54,8 +54,8 @@ class PIStageZ(HardwareDevice):
 
         Args:
             device_id: USB device serial number
-            z_range: Z-axis range (min, max) in mm
-            velocity: Default velocity in mm/s
+            z_range: Z-axis range (min, max) in um
+            velocity: Default velocity in um/s
             axis: Axis identifier (default: 'A')
             name: Custom name for the stage
         """
@@ -119,7 +119,7 @@ class PIStageZ(HardwareDevice):
             # Set velocity if supported
             try:
                 self._gcs_device.VEL(self._axis, self._velocity)
-                self._logger.debug(f"Velocity set to {self._velocity} mm/s")
+                self._logger.debug(f"Velocity set to {self._velocity} um/s")
             except Exception as e:
                 self._logger.warning(f"Could not set velocity: {e}")
 
@@ -160,7 +160,7 @@ class PIStageZ(HardwareDevice):
         """Validate and clamp position to limits.
 
         Args:
-            z: Z position in mm
+            z: Z position in um
 
         Returns:
             Validated Z position
@@ -187,7 +187,7 @@ class PIStageZ(HardwareDevice):
         """Move to absolute Z position.
 
         Args:
-            z: Target Z position in mm
+            z: Target Z position in um
             wait: Wait for movement to complete
             timeout: Timeout in seconds for movement
 
@@ -203,7 +203,7 @@ class PIStageZ(HardwareDevice):
         try:
             # Move Z axis
             self._gcs_device.MOV(self._axis, z)
-            self._logger.debug(f"Moving Z to {z} mm")
+            self._logger.debug(f"Moving Z to {z} um")
 
             # Wait for movement to complete
             if wait:
@@ -217,7 +217,7 @@ class PIStageZ(HardwareDevice):
 
             # Update position
             self._update_position()
-            self._logger.info(f"Moved to Z position: {z} mm")
+            self._logger.info(f"Moved to Z position: {z} um")
 
         except TimeoutError:
             raise
@@ -230,7 +230,7 @@ class PIStageZ(HardwareDevice):
         """Move relative to current Z position.
 
         Args:
-            dz: Relative Z movement in mm
+            dz: Relative Z movement in um
             wait: Wait for movement to complete
             timeout: Timeout in seconds
 
@@ -246,7 +246,7 @@ class PIStageZ(HardwareDevice):
         """Get current Z position.
 
         Returns:
-            Z position in mm
+            Z position in um
 
         Raises:
             CommandError: If position query fails
@@ -300,7 +300,7 @@ class PIStageZ(HardwareDevice):
         """Set movement velocity.
 
         Args:
-            velocity: Velocity in mm/s
+            velocity: Velocity in um/s
 
         Raises:
             CommandError: If setting fails
@@ -310,7 +310,7 @@ class PIStageZ(HardwareDevice):
         try:
             self._gcs_device.VEL(self._axis, velocity)
             self._velocity = velocity
-            self._logger.debug(f"Velocity set to {velocity} mm/s")
+            self._logger.debug(f"Velocity set to {velocity} um/s")
 
         except Exception as e:
             self._logger.error(f"Failed to set velocity: {e}")
@@ -320,7 +320,7 @@ class PIStageZ(HardwareDevice):
         """Get current velocity setting.
 
         Returns:
-            Velocity in mm/s
+            Velocity in um/s
 
         Raises:
             CommandError: If query fails

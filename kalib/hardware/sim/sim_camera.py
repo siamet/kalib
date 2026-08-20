@@ -24,7 +24,7 @@ class SimCamera(HardwareDevice):
         frame = camera.capture()
     """
 
-    BLUR_PER_MM = 6.0  # Gaussian sigma in pixels per mm of defocus
+    BLUR_PER_UM = 6.0  # Gaussian sigma in pixels per um of defocus
 
     def __init__(self, world: SimWorld, device_idx: int = 0,
                  name: Optional[str] = None):
@@ -103,7 +103,7 @@ class SimCamera(HardwareDevice):
         if not self._acquiring:
             raise CommandError("Acquisition not ready. Call start_acquisition() first.")
 
-        sigma = self._world.defocus() * self.BLUR_PER_MM
+        sigma = self._world.defocus() * self.BLUR_PER_UM
         frame = self._pattern
         if sigma > 0.05:
             frame = cv2.GaussianBlur(frame, (0, 0), sigma)

@@ -209,8 +209,8 @@ class CalibrationController(QObject):
         """Perform autofocus at current position.
 
         Args:
-            search_range: Z search range in mm
-            step_size: Initial step size in mm
+            search_range: Z search range in um
+            step_size: Initial step size in um
             method: Sharpness calculation method
 
         Returns:
@@ -273,7 +273,7 @@ class CalibrationController(QObject):
 
         Args:
             num_steps: Number of Z steps
-            search_range: Total search range in mm
+            search_range: Total search range in um
 
         Returns:
             Best focus Z position or None on failure
@@ -286,7 +286,7 @@ class CalibrationController(QObject):
             current_z = self.stage.model.get_z_position()
             start_z = current_z - search_range / 2
 
-            self._logger.info(f"Quick autofocus: {num_steps} steps over {search_range}mm")
+            self._logger.info(f"Quick autofocus: {num_steps} steps over {search_range}um")
 
             z_positions = []
             images = []

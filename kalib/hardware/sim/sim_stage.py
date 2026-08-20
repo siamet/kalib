@@ -27,8 +27,8 @@ class SimStageXY(HardwareDevice):
             world: Shared simulated instrument state
             device_id: Present for parity with PIStageXY
             name: Human-readable device name
-            x_range: Permitted X travel in mm
-            y_range: Permitted Y travel in mm
+            x_range: Permitted X travel in um
+            y_range: Permitted Y travel in um
         """
         super().__init__(device_id=device_id or "SIM-XY", name=name or "Sim_XY")
         self._world = world
@@ -50,8 +50,8 @@ class SimStageXY(HardwareDevice):
         """Validate and clamp position to limits.
 
         Args:
-            x: X position in mm
-            y: Y position in mm
+            x: X position in um
+            y: Y position in um
 
         Returns:
             Tuple of clamped (x, y) positions
@@ -78,8 +78,8 @@ class SimStageXY(HardwareDevice):
         """Move to an absolute position.
 
         Args:
-            x: Target X in mm; unchanged if None
-            y: Target Y in mm; unchanged if None
+            x: Target X in um; unchanged if None
+            y: Target Y in um; unchanged if None
             wait: Accepted for API parity; simulated moves are instant
             timeout: Accepted for API parity; simulated moves are instant
         """
@@ -99,13 +99,13 @@ class SimStageXY(HardwareDevice):
 
     def move_relative(self, dx: float = 0.0, dy: float = 0.0,
                       wait: bool = True, timeout: float = 30.0) -> None:
-        """Move by a relative offset in mm."""
+        """Move by a relative offset in um."""
         self._check_connected()
         self.move_absolute(x=self._world.x + dx, y=self._world.y + dy,
                            wait=wait, timeout=timeout)
 
     def get_position(self) -> Tuple[float, float]:
-        """Return current position as (x, y) in mm."""
+        """Return current position as (x, y) in um."""
         self._check_connected()
         return (self._world.x, self._world.y)
 
@@ -119,23 +119,23 @@ class SimStageXY(HardwareDevice):
         self._check_connected()
 
     def set_velocity(self, velocity: float) -> None:
-        """Set velocity in mm/s."""
+        """Set velocity in um/s."""
         self._check_connected()
         self._velocity = float(velocity)
 
     def get_velocity(self) -> Tuple[float, float]:
-        """Return velocity for both axes in mm/s."""
+        """Return velocity for both axes in um/s."""
         self._check_connected()
         return (self._velocity, self._velocity)
 
     @property
     def x_range(self) -> Tuple[float, float]:
-        """Permitted X travel in mm."""
+        """Permitted X travel in um."""
         return self._x_range
 
     @property
     def y_range(self) -> Tuple[float, float]:
-        """Permitted Y travel in mm."""
+        """Permitted Y travel in um."""
         return self._y_range
 
     @property
@@ -162,7 +162,7 @@ class SimStageZ(HardwareDevice):
             world: Shared simulated instrument state
             device_id: Present for parity with PIStageZ
             name: Human-readable device name
-            z_range: Permitted Z travel in mm
+            z_range: Permitted Z travel in um
         """
         super().__init__(device_id=device_id or "SIM-Z", name=name or "Sim_Z")
         self._world = world
@@ -184,7 +184,7 @@ class SimStageZ(HardwareDevice):
         """Validate and clamp position to limits.
 
         Args:
-            z: Z position in mm
+            z: Z position in um
 
         Returns:
             Clamped Z position
@@ -205,10 +205,10 @@ class SimStageZ(HardwareDevice):
 
     def move_absolute(self, z: float, wait: bool = True,
                       timeout: float = 30.0) -> None:
-        """Move to an absolute Z position in mm.
+        """Move to an absolute Z position in um.
 
         Args:
-            z: Target Z in mm
+            z: Target Z in um
             wait: Accepted for API parity; simulated moves are instant
             timeout: Accepted for API parity; simulated moves are instant
         """
@@ -221,12 +221,12 @@ class SimStageZ(HardwareDevice):
 
     def move_relative(self, dz: float, wait: bool = True,
                       timeout: float = 30.0) -> None:
-        """Move by a relative offset in mm."""
+        """Move by a relative offset in um."""
         self._check_connected()
         self.move_absolute(self._world.z + dz, wait=wait, timeout=timeout)
 
     def get_position(self) -> float:
-        """Return current Z position in mm."""
+        """Return current Z position in um."""
         self._check_connected()
         return self._world.z
 
@@ -240,12 +240,12 @@ class SimStageZ(HardwareDevice):
         self._check_connected()
 
     def set_velocity(self, velocity: float) -> None:
-        """Set velocity in mm/s."""
+        """Set velocity in um/s."""
         self._check_connected()
         self._velocity = float(velocity)
 
     def get_velocity(self) -> float:
-        """Return velocity in mm/s."""
+        """Return velocity in um/s."""
         self._check_connected()
         return self._velocity
 
@@ -256,7 +256,7 @@ class SimStageZ(HardwareDevice):
 
     @property
     def z_range(self) -> Tuple[float, float]:
-        """Permitted Z travel in mm."""
+        """Permitted Z travel in um."""
         return self._z_range
 
     @property

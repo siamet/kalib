@@ -219,6 +219,17 @@ a base64-encoded `jpeg_base64` field.
 > rate. Use `preview` for a quick look, and RDP to the instrument when you want
 > to watch continuously.
 
+## Units
+
+All stage positions, step sizes and travel limits are **micrometres**, not
+millimetres. These are piezo stages: the E-725 reports `um` for its axes with
+100 um of XY travel, and the E-816.DB drives 10 um in Z. So
+`move-xy --x 10 --y 20` moves to 10 um, 20 um.
+
+Earlier versions of this project annotated these values as mm throughout —
+including in the GUI's position readout. The numbers were always correct; only
+the unit labels were wrong.
+
 ## What the link can actually carry
 
 Measured between the development machine and the instrument over Tailscale

@@ -98,7 +98,7 @@ class CalibrationWidget(QWidget):
         autofocus_layout = QVBoxLayout(autofocus_group)
 
         af_params_layout = QHBoxLayout()
-        af_params_layout.addWidget(QLabel("Search Range (mm):"))
+        af_params_layout.addWidget(QLabel("Search Range (µm):"))
         self.af_range_spin = QDoubleSpinBox()
         self.af_range_spin.setDecimals(3)
         self.af_range_spin.setRange(0.1, 5.0)
@@ -259,7 +259,7 @@ class CalibrationWidget(QWidget):
 
     def _on_focus_found(self, z_position: float) -> None:
         """Handle focus found."""
-        self.af_result_label.setText(f"Best Focus: Z={z_position:.3f} mm")
+        self.af_result_label.setText(f"Best Focus: Z={z_position:.3f} µm")
 
     def _on_progress_updated(self, current: int, total: int) -> None:
         """Handle progress update."""

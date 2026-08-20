@@ -27,7 +27,7 @@ AUTOFOCUS_MIN_STEPS = 1
 AUTOFOCUS_MAX_STEPS = 200
 
 # Caller-supplied scan geometry (start/end/step) can imply an arbitrarily
-# large position count -- e.g. step_x=0.01 over 100 mm is 1e8 positions.
+# large position count -- e.g. step_x=0.01 over 100 um is 1e8 positions.
 # Reject anything past this before a scan is configured or started.
 MAX_SCAN_POSITIONS = 10_000
 
