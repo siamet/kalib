@@ -9,6 +9,7 @@ from PySide6.QtCore import QObject, Signal
 import numpy as np
 
 from kalib.hardware import IDSCamera, ConnectionError, CommandError, HardwareDevice
+from kalib.hardware.ids_camera import parse_pixel_format
 from kalib.models import CameraModel, CameraSettings
 from kalib.utils.logger import get_logger
 
@@ -70,7 +71,9 @@ class CameraController(QObject):
             if self._injected_device is not None:
                 self._camera = self._injected_device
             else:
-                pixel_format = (8, "RGB")  # TODO: Get from settings
+                pixel_format = parse_pixel_format(
+                    self.model.settings.pixel_format
+                )
                 self._camera = IDSCamera(
                     device_idx=self._device_idx,
                     pixel_format=pixel_format

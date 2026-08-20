@@ -8,7 +8,7 @@ camera:
   default_exposure: 15000         # Default exposure time (microseconds)
   fps_limit: 30                   # Maximum frames per second
   save_format: "tiff"             # Image save format (tiff, png, jpg)
-  pixel_format: "RGB8"            # Pixel format for camera
+  pixel_format: "auto"            # "auto" uses the sensor's native mode; or Mono8/Mono12/RGB8
   auto_exposure: false            # Enable auto exposure by default
 
 # Hardware Backend

@@ -55,7 +55,13 @@ class HardwareFactory:
             from kalib.hardware.sim.sim_camera import SimCamera
             return SimCamera(self._world, device_idx=device_idx)
         from kalib.hardware.ids_camera import IDSCamera
-        return IDSCamera(device_idx=device_idx, pixel_format=(8, "RGB"))
+        from kalib.hardware.ids_camera import parse_pixel_format
+        return IDSCamera(
+            device_idx=device_idx,
+            pixel_format=parse_pixel_format(
+                self._settings.get('camera.pixel_format', 'auto')
+            ),
+        )
 
     def create_stage_xy(self, device_id: Optional[str] = None,
                         x_range: Optional[Tuple[float, float]] = None,
