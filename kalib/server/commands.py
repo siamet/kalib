@@ -226,8 +226,10 @@ def _snap(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, Any]:
     """
     frame = _capture(reg)
     path = Path(args.get("path") or _default_capture_path())
+    if not path.suffix:
+        path = path.with_suffix(".tiff")
     path.parent.mkdir(parents=True, exist_ok=True)
-    save_image(frame, str(path), format=path.suffix.lstrip(".") or "tiff")
+    save_image(frame, str(path), format=path.suffix.lstrip("."))
 
     meta = {
         "path": str(path),

@@ -71,6 +71,21 @@ def test_snap_response_carries_no_pixel_data(registry, tmp_path):
     assert len(json.dumps(result)) < 2000
 
 
+def test_snap_with_an_extensionless_path_reports_the_file_it_actually_wrote(
+    registry, tmp_path
+):
+    """The returned path must be the one scp will actually find on disk.
+
+    save_image() silently appends the format extension when the caller's
+    path lacks one; the response and sidecar must reflect that, not the
+    caller's original, now-inaccurate, path.
+    """
+    target = tmp_path / "shot"
+    result = registry.dispatch("snap", {"path": str(target)})
+    assert Path(result["path"]).exists()
+    assert Path(result["path"]).with_suffix(".json").exists()
+
+
 def test_preview_returns_base64_jpeg_within_the_cap(registry):
     """preview returns pixels, downscaled and size-capped."""
     result = registry.dispatch("preview", {"max_px": 256})
