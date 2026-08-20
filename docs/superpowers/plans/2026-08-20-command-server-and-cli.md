@@ -42,7 +42,7 @@ painful, moving autofocus onto a worker thread is a later change.
 - The server binds **127.0.0.1 only**. It implements no authentication — SSH provides it. Binding any other interface is a defect.
 - Protocol version is `1`. Every request and response carries `"v": 1`.
 - Error `type` values reuse the existing exception names from `kalib/hardware/base.py`: `ConnectionError`, `CommandError`, `TimeoutError`, `ConfigurationError`, `HardwareError`.
-- **Full-resolution images never travel on the command channel.** A frame is 4000×3000×3 = 36 MB. `snap` writes to disk and returns a path; only `preview` returns pixels, downscaled and JPEG-compressed with a hard size cap.
+- **Full-resolution images never travel on the command channel.** A frame is 4000×3000 = 12 MB (the sensor is monochrome; earlier drafts said 36 MB, which was the size the application produced before it stopped converting mono to RGB). `snap` writes to disk and returns a path; only `preview` returns pixels, downscaled and JPEG-compressed with a hard size cap.
 - Never modify `config/config.yaml`.
 - All work is testable against the simulated backend from the previous plan: `HardwareFactory(settings)` with `hardware.backend` set to `sim`.
 
