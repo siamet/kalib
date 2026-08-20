@@ -15,7 +15,7 @@ import sys
 import uuid
 from typing import Any, Dict, List, Optional
 
-from kalib.server.protocol import decode_message, encode_request
+from kalib.server.protocol import ProtocolError, decode_message, encode_request
 
 DEFAULT_PORT = 8765
 
@@ -113,7 +113,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     try:
         result = send_command(cli_to_wire(args.command), payload,
                               port=args.port, timeout=args.timeout)
-    except (CommandFailed, OSError) as exc:
+    except (CommandFailed, OSError, ProtocolError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     print(json.dumps(result, indent=2))
