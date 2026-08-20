@@ -728,7 +728,6 @@ Add to the imports at the top of `kalib/server/commands.py`:
 ```python
 import base64
 import json
-import time
 from datetime import datetime
 from pathlib import Path
 

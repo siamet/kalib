@@ -195,6 +195,7 @@ settings.get('camera.default_exposure', 15000)  # 15000µs fallback
 # Formatting:        black kalib/ tests/
 # Type checking:     mypy kalib/
 # Simulated hardware: python -m kalib.main --simulate
+# Command server:      python -m kalib.main --serve
 ```
 
 ### Debugging Tools

@@ -9,6 +9,23 @@ kalib_root = Path(__file__).parent.parent
 sys.path.insert(0, str(kalib_root))
 
 
+@pytest.fixture(scope="session")
+def qapp():
+    """A Qt application instance for tests that need a live event loop.
+
+    Uses QCoreApplication rather than QApplication: nothing here needs
+    actual widgets, only the event loop that lets queued cross-thread
+    signals (e.g. ScanController's worker-to-controller cleanup) get
+    delivered via processEvents(). QApplication requires a working GUI
+    platform plugin and hangs indefinitely in this project's headless/CI
+    sandboxes even with DISPLAY set, where QCoreApplication starts
+    immediately.
+    """
+    from PySide6.QtCore import QCoreApplication
+    app = QCoreApplication.instance() or QCoreApplication([])
+    yield app
+
+
 @pytest.fixture
 def mock_hardware():
     """Fixture to mock hardware devices for testing."""

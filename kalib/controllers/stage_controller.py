@@ -241,36 +241,34 @@ class StageController(QObject):
             wait: Wait for movement to complete
 
         Returns:
-            True if movement successful
-
-        Emits:
-            movement_started: When movement begins
-            movement_completed: When movement finishes (if wait=True)
-            position_changed: When position updates
-            error_occurred: On failure
+            True if movement successful; emits movement_started,
+            position_changed and (if wait) movement_completed on success,
+            or error_occurred on failure (e.g. the targeted stage isn't
+            connected).
         """
         try:
             self.movement_started.emit()
 
             # Move XY if specified
-            if (x is not None or y is not None) and self._xy_stage is not None:
+            if x is not None or y is not None:
+                if self._xy_stage is None:
+                    raise CommandError("XY stage not connected")
                 current_x, current_y = self._xy_stage.get_position()
                 target_x = x if x is not None else current_x
                 target_y = y if y is not None else current_y
-
                 self._xy_stage.move_absolute(x=target_x, y=target_y, wait=wait)
                 self.model.update_position(x=target_x, y=target_y)
 
             # Move Z if specified
-            if z is not None and self._z_stage is not None:
+            if z is not None:
+                if self._z_stage is None:
+                    raise CommandError("Z stage not connected")
                 self._z_stage.move_absolute(z, wait=wait)
                 self.model.update_position(z=z)
 
             self._emit_position()
-
             if wait:
                 self.movement_completed.emit()
-
             return True
 
         except CommandError as e:
@@ -292,30 +290,27 @@ class StageController(QObject):
             wait: Wait for movement to complete
 
         Returns:
-            True if movement successful
-
-        Emits:
-            movement_started: When movement begins
-            movement_completed: When movement finishes (if wait=True)
-            position_changed: When position updates
-            error_occurred: On failure
+            True if movement successful; emits movement_started,
+            position_changed and (if wait) movement_completed on success,
+            or error_occurred on failure (e.g. the targeted stage isn't
+            connected).
         """
         try:
             self.movement_started.emit()
 
             # Move XY if specified
-            if (dx != 0.0 or dy != 0.0) and self._xy_stage is not None:
+            if dx != 0.0 or dy != 0.0:
+                if self._xy_stage is None:
+                    raise CommandError("XY stage not connected")
                 self._xy_stage.move_relative(dx=dx, dy=dy, wait=wait)
-
-                # Update position
                 x, y = self._xy_stage.get_position()
                 self.model.update_position(x=x, y=y)
 
             # Move Z if specified
-            if dz != 0.0 and self._z_stage is not None:
+            if dz != 0.0:
+                if self._z_stage is None:
+                    raise CommandError("Z stage not connected")
                 self._z_stage.move_relative(dz=dz, wait=wait)
-
-                # Update position
                 z = self._z_stage.get_position()
                 self.model.update_position(z=z)
 

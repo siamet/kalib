@@ -6,7 +6,7 @@ Initializes the application, creates controllers, and launches the main window.
 import sys
 import argparse
 from pathlib import Path
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, TYPE_CHECKING
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 
@@ -23,6 +23,9 @@ from kalib.controllers import (
 )
 from kalib.views import MainWindow
 
+if TYPE_CHECKING:
+    from kalib.server.daemon import CommandDaemon
+
 
 class KalibApplication:
     """Main Kalib application.
@@ -31,15 +34,21 @@ class KalibApplication:
     """
 
     def __init__(self, config_path: str = None, log_level: str = None,
-                 simulate: bool = False):
+                 simulate: bool = False, serve: bool = False,
+                 serve_port: int = 8765):
         """Initialize application.
 
         Args:
             config_path: Path to configuration file
             log_level: Logging level override
             simulate: Run against simulated hardware instead of the instrument
+            serve: Run a localhost command server for remote operation
+            serve_port: Port for the command server
         """
         self._simulate = simulate
+        self._serve = serve
+        self._serve_port = serve_port
+        self.daemon: Optional["CommandDaemon"] = None
         self._logger = None
         self.settings: Settings = None
         self.app: QApplication = None
@@ -105,6 +114,9 @@ class KalibApplication:
                 calibration_controller=self.calibration,
                 settings=self.settings
             )
+
+            if self._serve:
+                self._start_command_server()
 
             self._logger.info("Application initialized successfully")
             return True
@@ -214,6 +226,28 @@ class KalibApplication:
         )
         return camera_device, xy_device, z_device
 
+    def _start_command_server(self) -> None:
+        """Start the localhost command server.
+
+        The daemon only holds references to the controllers; it constructs no
+        hardware, so the real drivers stay lazily built as before.
+        """
+        from kalib.server.commands import CommandRegistry
+        from kalib.server.daemon import CommandDaemon
+
+        registry = CommandRegistry(
+            camera=self.camera,
+            stage=self.stage,
+            scan=self.scan,
+            calibration=self.calibration,
+        )
+        self.daemon = CommandDaemon(registry, port=self._serve_port)
+        port = self.daemon.start()
+        self._logger.info(
+            f"Command server ready on 127.0.0.1:{port}. "
+            f"Drive it over SSH with: ssh <host> kalib-cli <command>"
+        )
+
     def run(self) -> int:
         """Run application.
 
@@ -245,6 +279,9 @@ class KalibApplication:
         try:
             self._logger.info("Cleaning up application...")
 
+            if self.daemon is not None:
+                self.daemon.stop()
+
             # Cleanup controllers
             if self.camera:
                 self.camera.cleanup()
@@ -262,6 +299,26 @@ class KalibApplication:
 
         except Exception as e:
             self._logger.error(f"Error during cleanup: {e}", exc_info=True)
+
+
+def _add_serve_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add the command-server arguments to a parser.
+
+    Args:
+        parser: Parser to extend
+    """
+    parser.add_argument(
+        '--serve',
+        action='store_true',
+        help="Run a localhost command server so the instrument can be driven remotely"
+    )
+
+    parser.add_argument(
+        '--serve-port',
+        type=int,
+        default=8765,
+        help="Port for the command server (default: 8765)"
+    )
 
 
 def parse_arguments(argv: Optional[List[str]] = None):
@@ -305,6 +362,8 @@ def parse_arguments(argv: Optional[List[str]] = None):
         help="Run against simulated hardware instead of the instrument"
     )
 
+    _add_serve_arguments(parser)
+
     return parser.parse_args(argv)
 
 
@@ -317,7 +376,9 @@ def main():
     app = KalibApplication(
         config_path=args.config,
         log_level=args.log_level,
-        simulate=args.simulate
+        simulate=args.simulate,
+        serve=args.serve,
+        serve_port=args.serve_port
     )
 
     # Run application
