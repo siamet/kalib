@@ -12,6 +12,7 @@ without growing `CommandRegistry` itself.
 
 import base64
 import json
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
@@ -21,6 +22,7 @@ import numpy as np
 
 from kalib.algorithms.sharpness import gradient_sharpness
 from kalib.hardware.base import CommandError
+from kalib.models import XYScanParameters, ZStackParameters
 from kalib.utils.image_utils import save_image
 from kalib.utils.logger import get_logger
 
@@ -63,6 +65,7 @@ class CommandRegistry:
         self.stage: "StageController" = stage
         self.scan: Optional["ScanController"] = scan
         self.calibration: Optional["CalibrationController"] = calibration
+        self._job_id: Optional[str] = None
         self._handlers: Dict[str, Callable[["CommandRegistry", Dict[str, Any]], Any]] = {
             "status": _status,
             "connect": _connect,
@@ -78,6 +81,10 @@ class CommandRegistry:
             "tilt_start": _tilt_start,
             "tilt_measure": _tilt_measure,
             "tilt_complete": _tilt_complete,
+            "scan_xy": _scan_xy,
+            "scan_z": _scan_z,
+            "job_status": _job_status,
+            "job_cancel": _job_cancel,
         }
 
     def command_names(self) -> List[str]:
@@ -379,3 +386,87 @@ def _tilt_complete(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, Any]
         Whether the calibration completed successfully
     """
     return {"completed": bool(_need_calibration(reg).complete_tilt_calibration())}
+
+
+def _need_scan(reg: CommandRegistry) -> "ScanController":
+    """Return the registry's scan controller or raise.
+
+    Args:
+        reg: The registry to check
+
+    Returns:
+        The scan controller
+
+    Raises:
+        CommandError: If the server was built without one
+    """
+    if reg.scan is None:
+        raise CommandError("No scan controller is available")
+    return reg.scan
+
+
+def _start_job(reg: CommandRegistry, save_path: Optional[str]) -> Dict[str, Any]:
+    """Start the configured scan and register it as the current job.
+
+    Args:
+        reg: The registry whose scan controller performs the scan
+        save_path: Directory for scan output, or None for the default
+
+    Returns:
+        The new job id and whether the scan started
+
+    Raises:
+        CommandError: If a scan is already running
+    """
+    scan = _need_scan(reg)
+    if scan.is_scanning:
+        raise CommandError(
+            f"A scan is already running (job {reg._job_id}). "
+            f"Cancel it first."
+        )
+    started = scan.start_scan(save_path=save_path)
+    reg._job_id = uuid.uuid4().hex[:8] if started else None
+    return {"job_id": reg._job_id, "started": bool(started)}
+
+
+def _scan_xy(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Configure and start an XY grid scan."""
+    scan = _need_scan(reg)
+    scan.configure_xy_scan(XYScanParameters(
+        start_x=float(args.get("start_x", 0.0)),
+        start_y=float(args.get("start_y", 0.0)),
+        end_x=float(args.get("end_x", 10.0)),
+        end_y=float(args.get("end_y", 10.0)),
+        step_x=float(args.get("step_x", 1.0)),
+        step_y=float(args.get("step_y", 1.0)),
+    ))
+    return _start_job(reg, args.get("save_path"))
+
+
+def _scan_z(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Configure and start a Z-stack scan."""
+    scan = _need_scan(reg)
+    scan.configure_z_stack(ZStackParameters(
+        start_z=float(args.get("start_z", 0.0)),
+        end_z=float(args.get("end_z", 5.0)),
+        step_z=float(args.get("step_z", 0.1)),
+    ))
+    return _start_job(reg, args.get("save_path"))
+
+
+def _job_status(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Report the current scan job, if any."""
+    scan = _need_scan(reg)
+    scanning = scan.is_scanning
+    if not scanning:
+        reg._job_id = None
+    return {"job_id": reg._job_id, "scanning": bool(scanning),
+            "progress": float(scan.scan_progress)}
+
+
+def _job_cancel(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Cancel the running scan."""
+    cancelled = _need_scan(reg).cancel_scan()
+    if cancelled:
+        reg._job_id = None
+    return {"cancelled": bool(cancelled)}

@@ -22,6 +22,7 @@ class ScanWorker(QObject):
     position_reached = Signal(float, float, float)  # x, y, z
     image_captured = Signal(object)  # image
     scan_completed = Signal()
+    scan_cancelled = Signal()
     scan_error = Signal(str)
 
     def __init__(self, scan_model: ScanModel,
@@ -106,6 +107,8 @@ class ScanWorker(QObject):
                 self.scan_completed.emit()
             else:
                 self.scan_model.cancel_scan()
+                self._logger.info("XY scan cancelled")
+                self.scan_cancelled.emit()
 
         except Exception as e:
             error_msg = f"XY scan error: {e}"
@@ -175,6 +178,8 @@ class ScanWorker(QObject):
                 self.scan_completed.emit()
             else:
                 self.scan_model.cancel_scan()
+                self._logger.info("Z-stack cancelled")
+                self.scan_cancelled.emit()
 
         except Exception as e:
             error_msg = f"Z-stack error: {e}"
@@ -289,6 +294,7 @@ class ScanController(QObject):
             self._scan_worker.position_reached.connect(self.position_reached.emit)
             self._scan_worker.image_captured.connect(self.image_captured.emit)
             self._scan_worker.scan_completed.connect(self._on_scan_completed)
+            self._scan_worker.scan_cancelled.connect(self._on_scan_cancelled)
             self._scan_worker.scan_error.connect(self._on_scan_error)
 
             # Connect thread signals
@@ -354,6 +360,12 @@ class ScanController(QObject):
         self._cleanup_thread()
         self._logger.info("Scan completed successfully")
         self.scan_completed.emit()
+
+    def _on_scan_cancelled(self) -> None:
+        """Handle scan cancellation."""
+        self._cleanup_thread()
+        self._logger.info("Scan cancelled")
+        self.scan_cancelled.emit()
 
     def _on_scan_error(self, error_msg: str) -> None:
         """Handle scan error.
