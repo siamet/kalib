@@ -9,9 +9,29 @@ instrument from a separate development machine.
 The command server runs inside the same Qt process as the Kalib GUI, on the
 instrument machine, and dispatches requests directly to the same controllers
 the GUI itself uses. It binds `127.0.0.1` only and implements no
-authentication of its own. SSH is what makes it reachable at all: it
-provides both the network hop from your machine to the instrument and the
-authentication that gates who may connect.
+authentication of its own.
+
+**This means loopback access is unauthenticated.** Binding loopback keeps
+the port off the network, but it does not gate who may connect: any process
+running as any user with a local session on the instrument machine --
+logged in at its console, connected over RDP, or otherwise present on that
+machine -- can open a socket to `127.0.0.1:8765` and drive the stage, start
+scans, or capture and overwrite files, with no credential of any kind. SSH
+is what makes the server reachable from a *different* machine, and only
+that: it provides the network hop and authenticates who may reach the
+instrument's SSH port, but it authenticates nothing about who may already
+be running processes on the instrument. Whoever has a local session on the
+instrument has full control of it through this server, whether or not they
+ever touch SSH. Treat local account access to the instrument machine with
+the same care as remote command-server access, because they are the same
+privilege.
+
+`snap` in particular writes wherever the Kalib process can write, using
+whatever path the caller supplies, with no path confinement. This is
+deliberate rather than an oversight: the caller already runs as the same
+user as the Kalib process and could write files directly by other means, so
+confining `snap`'s output path would not remove any capability the caller
+doesn't already have -- it would only be security theatre.
 
 ## Prerequisites
 

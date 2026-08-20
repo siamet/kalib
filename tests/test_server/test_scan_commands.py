@@ -10,6 +10,7 @@ from kalib.controllers.stage_controller import StageController
 from kalib.hardware.base import CommandError
 from kalib.hardware.factory import HardwareFactory
 from kalib.server.commands import CommandRegistry
+from kalib.server.handlers_scan import MAX_SCAN_POSITIONS
 
 
 class FakeSettings:
@@ -111,6 +112,27 @@ def test_job_status_with_no_job_reports_idle(registry):
     status = registry.dispatch("job_status", {})
     assert status["scanning"] is False
     assert status["job_id"] is None
+
+
+def test_scan_xy_rejects_geometry_over_the_position_cap(registry):
+    """step_x=0.01 over 100 mm implies 1e8 positions; that must be
+    rejected before a thread is ever started, naming the limit, rather
+    than the server trying to allocate a grid that size."""
+    with pytest.raises(CommandError, match=str(MAX_SCAN_POSITIONS)):
+        registry.dispatch("scan_xy", {
+            "start_x": 0.0, "start_y": 0.0, "end_x": 100.0, "end_y": 100.0,
+            "step_x": 0.01, "step_y": 0.01,
+        })
+    assert registry.scan.is_scanning is False
+
+
+def test_scan_z_rejects_geometry_over_the_position_cap(registry):
+    """The same unbounded-allocation shape applies to a Z-stack."""
+    with pytest.raises(CommandError, match=str(MAX_SCAN_POSITIONS)):
+        registry.dispatch("scan_z", {
+            "start_z": 0.0, "end_z": 100.0, "step_z": 0.001,
+        })
+    assert registry.scan.is_scanning is False
 
 
 def test_scan_requires_a_scan_controller(registry):

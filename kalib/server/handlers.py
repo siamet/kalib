@@ -1,4 +1,5 @@
-"""Command handlers dispatched by CommandRegistry.
+"""Status, connection and motion command handlers dispatched by
+CommandRegistry.
 
 Handlers run on the Qt main thread, so they may call the controllers
 directly. A handler returns a JSON-serialisable result or raises one of the
@@ -9,27 +10,27 @@ Handlers are module-level functions, not methods, so that new commands can
 be added by writing one function here plus one `_handlers` table entry in
 kalib.server.commands, without growing `CommandRegistry` itself. Split out
 of kalib.server.commands to keep that file under the project's line cap;
-CommandRegistry imports these by name and owns the dispatch table.
+CommandRegistry imports these by name and owns the dispatch table. The
+autofocus, tilt-calibration and scan-job handlers live in the sibling
+kalib.server.handlers_scan for the same reason -- this module was itself
+approaching the cap -- and import `_require`/`_position_dict` back from
+here.
 """
 
 import base64
 import json
-import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict
 
 import cv2
 import numpy as np
 
 from kalib.algorithms.sharpness import gradient_sharpness
 from kalib.hardware.base import CommandError
-from kalib.models import XYScanParameters, ZStackParameters
 from kalib.utils.image_utils import save_image
 
 if TYPE_CHECKING:
-    from kalib.controllers.calibration_controller import CalibrationController
-    from kalib.controllers.scan_controller import ScanController
     from kalib.server.commands import CommandRegistry
 
 PREVIEW_DEFAULT_PX = 1024
@@ -72,12 +73,40 @@ def _status(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _try_connect(connect_fn) -> Any:
+    """Call a controller connect method, isolating its failure.
+
+    connect_camera()/connect_xy_stage()/connect_z_stage() already turn a
+    ConnectionError into a returned `False`, but IDSCamera's constructor
+    raises a plain ImportError when the vendor SDK is not installed, which
+    is not caught inside connect_camera. Evaluating each device's connect
+    call separately, and catching here, keeps that from aborting the
+    whole `connect` command before the stages are ever attempted.
+
+    Args:
+        connect_fn: A zero-arg controller connect method
+
+    Returns:
+        Whatever connect_fn returns, or a short error string if it raised
+        an exception the controller itself did not catch.
+    """
+    try:
+        return connect_fn()
+    except Exception as exc:
+        return f"error: {exc}"
+
+
 def _connect(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, Any]:
-    """Connect every device, reporting which succeeded."""
+    """Connect every device, reporting which succeeded.
+
+    Each device is connected in its own try so that one failing -- most
+    commonly the camera, on a machine without the vendor SDK installed --
+    never prevents the others from being attempted.
+    """
     return {
-        "camera": reg.camera.connect_camera(),
-        "stage_xy": reg.stage.connect_xy_stage(),
-        "stage_z": reg.stage.connect_z_stage(),
+        "camera": _try_connect(reg.camera.connect_camera),
+        "stage_xy": _try_connect(reg.stage.connect_xy_stage),
+        "stage_z": _try_connect(reg.stage.connect_z_stage),
     }
 
 
@@ -96,28 +125,50 @@ def _get_position(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, flo
 
 
 def _move_xy(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, float]:
-    """Move the XY stage to an absolute position."""
-    reg.stage.move_absolute(x=_require(args, "x"), y=_require(args, "y"))
+    """Move the XY stage to an absolute position.
+
+    Raises:
+        CommandError: If the move fails, e.g. the stage is not connected
+    """
+    ok = reg.stage.move_absolute(x=float(_require(args, "x")),
+                                 y=float(_require(args, "y")))
+    reg.require_ok(ok, "Move failed")
     return _position_dict(reg)
 
 
 def _move_z(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, float]:
-    """Move the Z stage to an absolute position."""
-    reg.stage.move_absolute(z=_require(args, "z"))
+    """Move the Z stage to an absolute position.
+
+    Raises:
+        CommandError: If the move fails, e.g. the stage is not connected
+    """
+    ok = reg.stage.move_absolute(z=float(_require(args, "z")))
+    reg.require_ok(ok, "Move failed")
     return _position_dict(reg)
 
 
 def _move_rel(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, float]:
-    """Move all axes by a relative offset."""
-    reg.stage.move_relative(dx=args.get("dx", 0.0),
-                            dy=args.get("dy", 0.0),
-                            dz=args.get("dz", 0.0))
+    """Move all axes by a relative offset.
+
+    Raises:
+        CommandError: If the move fails, e.g. the stage is not connected
+    """
+    ok = reg.stage.move_relative(dx=float(args.get("dx", 0.0)),
+                                 dy=float(args.get("dy", 0.0)),
+                                 dz=float(args.get("dz", 0.0)))
+    reg.require_ok(ok, "Move failed")
     return _position_dict(reg)
 
 
 def _stop(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, Any]:
-    """Stop stage motion immediately."""
-    return {"stopped": reg.stage.stop_movement()}
+    """Stop stage motion immediately.
+
+    Raises:
+        CommandError: If the stop itself fails
+    """
+    ok = reg.stage.stop_movement()
+    reg.require_ok(ok, "Failed to stop stage")
+    return {"stopped": True}
 
 
 def _start_acquisition(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, Any]:
@@ -133,8 +184,12 @@ def _start_acquisition(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str
 
     Returns:
         The resulting acquisition state
+
+    Raises:
+        CommandError: If the camera fails to start, e.g. not connected
     """
-    reg.camera.start_acquisition()
+    ok = reg.camera.start_acquisition()
+    reg.require_ok(ok, "Failed to start acquisition")
     return {"acquiring": reg.camera.is_acquiring}
 
 
@@ -147,8 +202,12 @@ def _stop_acquisition(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str,
 
     Returns:
         The resulting acquisition state
+
+    Raises:
+        CommandError: If the camera fails to stop
     """
-    reg.camera.stop_acquisition()
+    ok = reg.camera.stop_acquisition()
+    reg.require_ok(ok, "Failed to stop acquisition")
     return {"acquiring": reg.camera.is_acquiring}
 
 
@@ -195,7 +254,7 @@ def _snap(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, Any]:
     path = Path(args.get("path") or _default_capture_path())
     if not path.suffix:
         path = path.with_suffix(".tiff")
-    path.parent.mkdir(parents=True, exist_ok=True)
+    # save_image() already creates the parent directory.
     save_image(frame, str(path), format=path.suffix.lstrip("."))
 
     meta = {
@@ -256,173 +315,3 @@ def _preview(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, Any]:
         "sharpness": sharpness,
     }
 
-
-def _need_calibration(reg: "CommandRegistry") -> "CalibrationController":
-    """Return the registry's calibration controller or raise.
-
-    Args:
-        reg: The registry to check
-
-    Returns:
-        The calibration controller
-
-    Raises:
-        CommandError: If the server was built without one
-    """
-    if reg.calibration is None:
-        raise CommandError("No calibration controller is available")
-    return reg.calibration
-
-
-def _autofocus(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, Any]:
-    """Run a quick autofocus sweep.
-
-    This blocks until focus is found, because CalibrationController is not
-    threaded. Expect roughly one to three seconds for 20 steps.
-
-    Args:
-        reg: The registry whose calibration controller performs the sweep
-        args: Optional "num_steps" and "search_range"
-
-    Returns:
-        The focus height found and the resulting stage position
-
-    Raises:
-        CommandError: If autofocus does not converge
-    """
-    calibration = _need_calibration(reg)
-    focus_z = calibration.quick_autofocus(
-        num_steps=int(args.get("num_steps", 20)),
-        search_range=float(args.get("search_range", 2.0)),
-    )
-    if focus_z is None:
-        raise CommandError("Autofocus failed to find a focus position")
-    return {"focus_z": float(focus_z), "position": _position_dict(reg)}
-
-
-def _tilt_start(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, Any]:
-    """Begin a tilt calibration sequence.
-
-    Args:
-        reg: The registry whose calibration controller is used
-        args: Optional "num_corners"
-
-    Returns:
-        Whether calibration started
-    """
-    started = _need_calibration(reg).start_tilt_calibration(
-        num_corners=int(args.get("num_corners", 4))
-    )
-    return {"started": bool(started)}
-
-
-def _tilt_measure(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, Any]:
-    """Measure one tilt-calibration corner.
-
-    Args:
-        reg: The registry whose calibration controller is used
-        args: Required "corner_idx"
-
-    Returns:
-        Whether the measurement succeeded and the corner it measured
-    """
-    corner_idx = int(_require(args, "corner_idx"))
-    measured = _need_calibration(reg).measure_tilt_corner(corner_idx)
-    return {"measured": bool(measured), "corner_idx": corner_idx}
-
-
-def _tilt_complete(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, Any]:
-    """Finish the tilt calibration and fit the plane.
-
-    Args:
-        reg: The registry whose calibration controller is used
-        args: Unused
-
-    Returns:
-        Whether the calibration completed successfully
-    """
-    return {"completed": bool(_need_calibration(reg).complete_tilt_calibration())}
-
-
-def _need_scan(reg: "CommandRegistry") -> "ScanController":
-    """Return the registry's scan controller or raise.
-
-    Args:
-        reg: The registry to check
-
-    Returns:
-        The scan controller
-
-    Raises:
-        CommandError: If the server was built without one
-    """
-    if reg.scan is None:
-        raise CommandError("No scan controller is available")
-    return reg.scan
-
-
-def _start_job(reg: "CommandRegistry", save_path: Optional[str]) -> Dict[str, Any]:
-    """Start the configured scan and register it as the current job.
-
-    Args:
-        reg: The registry whose scan controller performs the scan
-        save_path: Directory for scan output, or None for the default
-
-    Returns:
-        The new job id and whether the scan started
-
-    Raises:
-        CommandError: If a scan is already running
-    """
-    scan = _need_scan(reg)
-    if scan.is_scanning:
-        raise CommandError(
-            f"A scan is already running (job {reg._job_id}). "
-            f"Cancel it first."
-        )
-    started = scan.start_scan(save_path=save_path)
-    reg._job_id = uuid.uuid4().hex[:8] if started else None
-    return {"job_id": reg._job_id, "started": bool(started)}
-
-
-def _scan_xy(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, Any]:
-    """Configure and start an XY grid scan."""
-    scan = _need_scan(reg)
-    scan.configure_xy_scan(XYScanParameters(
-        start_x=float(args.get("start_x", 0.0)),
-        start_y=float(args.get("start_y", 0.0)),
-        end_x=float(args.get("end_x", 10.0)),
-        end_y=float(args.get("end_y", 10.0)),
-        step_x=float(args.get("step_x", 1.0)),
-        step_y=float(args.get("step_y", 1.0)),
-    ))
-    return _start_job(reg, args.get("save_path"))
-
-
-def _scan_z(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, Any]:
-    """Configure and start a Z-stack scan."""
-    scan = _need_scan(reg)
-    scan.configure_z_stack(ZStackParameters(
-        start_z=float(args.get("start_z", 0.0)),
-        end_z=float(args.get("end_z", 5.0)),
-        step_z=float(args.get("step_z", 0.1)),
-    ))
-    return _start_job(reg, args.get("save_path"))
-
-
-def _job_status(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, Any]:
-    """Report the current scan job, if any."""
-    scan = _need_scan(reg)
-    scanning = scan.is_scanning
-    if not scanning:
-        reg._job_id = None
-    return {"job_id": reg._job_id, "scanning": bool(scanning),
-            "progress": float(scan.scan_progress)}
-
-
-def _job_cancel(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, Any]:
-    """Cancel the running scan."""
-    cancelled = _need_scan(reg).cancel_scan()
-    if cancelled:
-        reg._job_id = None
-    return {"cancelled": bool(cancelled)}

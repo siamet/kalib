@@ -2,8 +2,12 @@
 
 QTcpServer delivers its signals on the Qt event loop, so command handlers run
 on the main thread alongside the controllers and need no cross-thread
-marshalling. The server binds loopback only: SSH provides the network hop and
-authentication, so the server implements none of its own.
+marshalling. The server binds loopback only and implements no authentication
+of its own: any local process or local user session on the instrument can
+connect to this port and drive the hardware. SSH is what makes the server
+reachable from a *different* machine, and only that -- it authenticates the
+network hop, not connections made from the instrument itself. See
+docs/REMOTE_OPERATION.md for the full threat model.
 """
 
 from typing import Optional, Tuple
@@ -22,6 +26,11 @@ from kalib.utils.logger import get_logger
 
 DEFAULT_PORT = 8765
 
+# A client that never sends a newline would otherwise grow its per-socket
+# buffer without limit; close the connection once an unterminated line
+# passes this size instead.
+MAX_BUFFER_BYTES = 1_000_000
+
 _logger = get_logger(__name__)
 
 
@@ -30,7 +39,7 @@ def _handle_line(registry: CommandRegistry,
     """Decode, dispatch and encode one request.
 
     Module-level and pure request-in/response-out, like the handlers in
-    kalib.server.commands: it needs no daemon state, only the registry to
+    kalib.server.handlers: it needs no daemon state, only the registry to
     dispatch into, so it does not belong on CommandDaemon itself.
 
     Args:
@@ -88,7 +97,7 @@ def _shutdown_safe_state(registry: CommandRegistry) -> dict:
     scan_cancelled = False
 
     try:
-        if registry.camera is not None and registry.camera.is_acquiring:
+        if registry.camera.is_acquiring:
             acquisition_stopped = bool(registry.camera.stop_acquisition())
     except Exception as exc:
         _logger.error(f"Could not stop acquisition: {exc}")
@@ -105,6 +114,27 @@ def _shutdown_safe_state(registry: CommandRegistry) -> dict:
     )
     return {"acquisition_stopped": acquisition_stopped,
             "scan_cancelled": scan_cancelled}
+
+
+def _over_cap(buf: bytes) -> bool:
+    """Whether an unterminated line has grown past MAX_BUFFER_BYTES.
+
+    Module-level, like _handle_line and _shutdown_safe_state: a client
+    that never sends a newline would otherwise grow its per-socket buffer
+    without limit, and this check needs no daemon state to make -- it
+    also keeps CommandDaemon itself under the line-count cap.
+    """
+    return b"\n" not in buf and len(buf) > MAX_BUFFER_BYTES
+
+
+def _close_oversized_client(sock: QTcpSocket, size: int) -> None:
+    """Log and close a connection whose unterminated line exceeded the cap."""
+    _logger.warning(
+        f"Client sent {size} bytes with no newline terminator "
+        f"(cap is {MAX_BUFFER_BYTES}); closing connection"
+    )
+    sock.abort()
+    sock.deleteLater()
 
 
 class CommandDaemon(QObject):
@@ -147,10 +177,7 @@ class CommandDaemon(QObject):
         return bool(self._server.isListening())
 
     def start(self) -> int:
-        """Begin listening on loopback.
-
-        Returns:
-            The bound port
+        """Begin listening on loopback; returns the bound port.
 
         Raises:
             RuntimeError: If the port cannot be bound
@@ -194,7 +221,13 @@ class CommandDaemon(QObject):
 
     def _on_ready_read(self, sock: QTcpSocket) -> None:
         """Consume whole lines from a client and answer each one."""
-        self._buffers[sock] = self._buffers.get(sock, b"") + bytes(sock.readAll())
+        buf = self._buffers.get(sock, b"") + bytes(sock.readAll())
+        if _over_cap(buf):
+            self._buffers.pop(sock, None)
+            _close_oversized_client(sock, len(buf))
+            return
+
+        self._buffers[sock] = buf
         while b"\n" in self._buffers[sock]:
             line, _, rest = self._buffers[sock].partition(b"\n")
             self._buffers[sock] = rest

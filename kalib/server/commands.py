@@ -1,32 +1,35 @@
 """Command registry mapping wire command names onto controller calls.
 
-The handler functions themselves live in kalib.server.handlers; this module
-owns only the dispatch table and the registry that walks it, so that new
-commands can be added there -- one function plus one `_handlers` entry --
-without growing this file.
+The handler functions themselves live in kalib.server.handlers (status,
+connection and motion) and kalib.server.handlers_scan (autofocus, tilt
+calibration and scan jobs); this module owns only the dispatch table and
+the registry that walks it, so that new commands can be added there -- one
+function plus one `_handlers` entry -- without growing this file.
 """
 
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 from kalib.hardware.base import CommandError
 from kalib.server.handlers import (
-    _autofocus,
     _connect,
     _disconnect,
     _get_position,
-    _job_cancel,
-    _job_status,
     _move_rel,
     _move_xy,
     _move_z,
     _preview,
-    _scan_xy,
-    _scan_z,
     _snap,
     _start_acquisition,
     _status,
     _stop,
     _stop_acquisition,
+)
+from kalib.server.handlers_scan import (
+    _autofocus,
+    _job_cancel,
+    _job_status,
+    _scan_xy,
+    _scan_z,
     _tilt_complete,
     _tilt_measure,
     _tilt_start,
@@ -68,7 +71,12 @@ class CommandRegistry:
         self.stage: "StageController" = stage
         self.scan: Optional["ScanController"] = scan
         self.calibration: Optional["CalibrationController"] = calibration
-        self._job_id: Optional[str] = None
+        self.job_id: Optional[str] = None
+        self._last_error: Optional[str] = None
+        self.camera.error_occurred.connect(self._on_device_error)
+        self.stage.error_occurred.connect(self._on_device_error)
+        if self.calibration is not None:
+            self.calibration.calibration_error.connect(self._on_device_error)
         self._handlers: Dict[str, Callable[["CommandRegistry", Dict[str, Any]], Any]] = {
             "status": _status,
             "connect": _connect,
@@ -114,5 +122,25 @@ class CommandRegistry:
             raise UnknownCommand(
                 f"Unknown command '{cmd}'. Known: {', '.join(self.command_names())}"
             )
+        self._last_error = None
         self._logger.debug(f"dispatch {cmd} {args}")
         return handler(self, args)
+
+    def _on_device_error(self, message: str) -> None:
+        """Buffer the latest controller error, connected to the
+        camera/stage/calibration error signals so a bool-returning handler
+        can raise *why* it failed instead of a bare `False`."""
+        self._last_error = message
+
+    def require_ok(self, ok: bool, fallback: str) -> None:
+        """Raise CommandError when a controller action reports failure.
+
+        Args:
+            ok: The bool a controller method returned
+            fallback: Message to use if no error signal fired this dispatch
+
+        Raises:
+            CommandError: If ok is False
+        """
+        if not ok:
+            raise CommandError(self._last_error or fallback)

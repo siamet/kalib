@@ -82,6 +82,30 @@ def test_connect_succeeds_on_fresh_hardware():
     assert result["stage_z"] is True
 
 
+def test_connect_isolates_a_camera_that_fails_outside_its_own_try_except():
+    """One device failing to connect must not prevent the others.
+
+    connect_camera() only catches ConnectionError internally; IDSCamera's
+    constructor raises a plain ImportError when the vendor SDK is not
+    installed (true of this dev environment -- IDS_AVAILABLE is False
+    here), which used to propagate out of the `connect` command before the
+    stages were ever attempted. connect must evaluate each device in its
+    own try so the stages still connect regardless.
+    """
+    factory = HardwareFactory(FakeSettings({'hardware.backend': 'sim'}))
+    camera = CameraController()  # No injected device: builds a real IDSCamera.
+    stage = StageController(xy_device=factory.create_stage_xy(),
+                            z_device=factory.create_stage_z())
+    registry = CommandRegistry(camera=camera, stage=stage, scan=None,
+                               calibration=None)
+
+    result = registry.dispatch("connect", {})
+
+    assert result["stage_xy"] is True
+    assert result["stage_z"] is True
+    assert result["camera"] is not True
+
+
 def test_disconnect_reports_each_device(registry):
     """disconnect reports a result per device."""
     result = registry.dispatch("disconnect", {})
@@ -130,6 +154,48 @@ def test_missing_required_argument_is_a_command_error(registry):
     """A command called without its required argument fails cleanly."""
     with pytest.raises(CommandError):
         registry.dispatch("move_z", {})
+
+
+def test_move_xy_on_an_unconnected_stage_raises_instead_of_reporting_ok():
+    """StageController.move_absolute used to return True having done
+    nothing when the targeted stage was never connected, so move_xy before
+    connect reported ok:true with a stale position and nothing moved. It
+    must now raise CommandError instead."""
+    factory = HardwareFactory(FakeSettings({'hardware.backend': 'sim'}))
+    camera = CameraController(device=factory.create_camera())
+    stage = StageController()  # No injected or configured devices.
+    registry = CommandRegistry(camera=camera, stage=stage, scan=None,
+                               calibration=None)
+    with pytest.raises(CommandError):
+        registry.dispatch("move_xy", {"x": 1.0, "y": 2.0})
+
+
+def test_start_acquisition_on_a_disconnected_camera_raises_with_a_reason():
+    """A bool-returning handler must surface why it failed, not just
+    turn a controller's False into a bare JSON false."""
+    factory = HardwareFactory(FakeSettings({'hardware.backend': 'sim'}))
+    camera = CameraController(device=factory.create_camera())  # not connected
+    stage = StageController(xy_device=factory.create_stage_xy(),
+                            z_device=factory.create_stage_z())
+    registry = CommandRegistry(camera=camera, stage=stage, scan=None,
+                               calibration=None)
+    with pytest.raises(CommandError, match="not connected"):
+        registry.dispatch("start_acquisition", {})
+
+
+def test_status_reports_false_fields_as_data_without_raising():
+    """status on disconnected hardware is a normal reply, not a failure:
+    connected: false and acquiring: false are the answer, not an error."""
+    factory = HardwareFactory(FakeSettings({'hardware.backend': 'sim'}))
+    camera = CameraController(device=factory.create_camera())
+    stage = StageController(xy_device=factory.create_stage_xy(),
+                            z_device=factory.create_stage_z())
+    registry = CommandRegistry(camera=camera, stage=stage, scan=None,
+                               calibration=None)
+    result = registry.dispatch("status", {})
+    assert result["camera"]["connected"] is False
+    assert result["stage_xy"]["connected"] is False
+    assert result["stage_z"]["connected"] is False
 
 
 def test_command_names_are_listed(registry):

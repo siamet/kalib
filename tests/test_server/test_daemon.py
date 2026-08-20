@@ -10,7 +10,7 @@ from kalib.controllers.camera_controller import CameraController
 from kalib.controllers.stage_controller import StageController
 from kalib.hardware.factory import HardwareFactory
 from kalib.server.commands import CommandRegistry
-from kalib.server.daemon import CommandDaemon
+from kalib.server.daemon import MAX_BUFFER_BYTES, CommandDaemon
 from kalib.server.protocol import PROTOCOL_VERSION, decode_message, encode_request
 
 
@@ -128,6 +128,30 @@ def test_stop_releases_the_port(daemon):
     """After stop the daemon is no longer listening."""
     daemon.stop()
     assert daemon.is_listening() is False
+
+
+def test_unterminated_line_over_the_cap_closes_the_connection(daemon, qapp):
+    """A client that never sends a newline cannot grow the server's
+    per-socket buffer without limit; past MAX_BUFFER_BYTES the connection
+    is closed instead of being buffered forever."""
+    with socket.create_connection(("127.0.0.1", daemon.port), timeout=5) as sock:
+        sock.sendall(b"x" * (MAX_BUFFER_BYTES + 1))
+        sock.settimeout(_POLL_INTERVAL)
+        deadline = time.monotonic() + _POLL_DEADLINE
+        closed = False
+        while not closed and time.monotonic() < deadline:
+            qapp.processEvents()
+            try:
+                chunk = sock.recv(4096)
+            except socket.timeout:
+                continue
+            except (ConnectionResetError, ConnectionAbortedError):
+                closed = True
+                break
+            if chunk == b"":
+                closed = True
+                break
+        assert closed is True
 
 
 def test_missing_cmd_field_returns_a_clean_error(daemon, qapp):
