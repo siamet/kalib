@@ -10,9 +10,18 @@ new commands by writing one function plus one `_handlers` table entry
 without growing `CommandRegistry` itself.
 """
 
+import base64
+import json
+from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
+import cv2
+import numpy as np
+
+from kalib.algorithms.sharpness import gradient_sharpness
 from kalib.hardware.base import CommandError
+from kalib.utils.image_utils import save_image
 from kalib.utils.logger import get_logger
 
 if TYPE_CHECKING:
@@ -20,6 +29,10 @@ if TYPE_CHECKING:
     from kalib.controllers.camera_controller import CameraController
     from kalib.controllers.scan_controller import ScanController
     from kalib.controllers.stage_controller import StageController
+
+PREVIEW_DEFAULT_PX = 1024
+PREVIEW_MAX_BYTES = 400_000
+PREVIEW_JPEG_QUALITY = 80
 
 
 class UnknownCommand(CommandError):
@@ -59,6 +72,8 @@ class CommandRegistry:
             "move_z": _move_z,
             "move_rel": _move_rel,
             "stop": _stop,
+            "snap": _snap,
+            "preview": _preview,
         }
 
     def command_names(self) -> List[str]:
@@ -168,3 +183,106 @@ def _move_rel(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, float]:
 def _stop(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, Any]:
     """Stop stage motion immediately."""
     return {"stopped": reg.stage.stop_movement()}
+
+
+def _capture(reg: CommandRegistry) -> np.ndarray:
+    """Capture one frame or raise.
+
+    Args:
+        reg: The registry whose camera controller performs the capture
+
+    Returns:
+        The captured frame
+
+    Raises:
+        CommandError: If no frame could be captured
+    """
+    frame = reg.camera.capture_image()
+    if frame is None:
+        raise CommandError(
+            "Capture failed. Is acquisition started? Call start_acquisition."
+        )
+    return frame
+
+
+def _default_capture_path() -> str:
+    """Return a timestamped default capture path under ./data."""
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    return str(Path("data") / f"snap_{stamp}.tiff")
+
+
+def _snap(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Capture at full resolution, write it to disk, return its path.
+
+    Pixels are deliberately not returned: a full frame is 36 MB and the
+    command channel is for control, not bulk data.
+
+    Args:
+        reg: The registry whose camera and stage controllers are used
+        args: Optional "path"; a timestamped default is used when absent
+
+    Returns:
+        The file path plus acquisition metadata
+    """
+    frame = _capture(reg)
+    path = Path(args.get("path") or _default_capture_path())
+    path.parent.mkdir(parents=True, exist_ok=True)
+    save_image(frame, str(path), format=path.suffix.lstrip(".") or "tiff")
+
+    meta = {
+        "path": str(path),
+        "width": int(frame.shape[1]),
+        "height": int(frame.shape[0]),
+        "dtype": str(frame.dtype),
+        "position": _position_dict(reg),
+        "sharpness": float(gradient_sharpness(frame)),
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+    }
+    path.with_suffix(".json").write_text(json.dumps(meta, indent=2))
+    return meta
+
+
+def _preview(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Capture a downscaled, compressed frame for a quick look.
+
+    Args:
+        reg: The registry whose camera controller performs the capture
+        args: Optional "max_px" long-edge target
+
+    Returns:
+        Base64 JPEG plus its dimensions and a sharpness metric
+
+    Raises:
+        CommandError: If the encoded image exceeds the size cap
+    """
+    frame = _capture(reg)
+    sharpness = float(gradient_sharpness(frame))
+
+    max_px = int(args.get("max_px", PREVIEW_DEFAULT_PX))
+    height, width = frame.shape[:2]
+    scale = min(1.0, max_px / max(height, width))
+    if scale < 1.0:
+        frame = cv2.resize(frame, (max(1, int(width * scale)),
+                                   max(1, int(height * scale))),
+                            interpolation=cv2.INTER_AREA)
+
+    ok, buf = cv2.imencode(
+        ".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), PREVIEW_JPEG_QUALITY]
+    )
+    if not ok:
+        raise CommandError("Preview encoding failed")
+
+    raw = buf.tobytes()
+    if len(raw) > PREVIEW_MAX_BYTES:
+        raise CommandError(
+            f"Preview is {len(raw)} bytes, over the {PREVIEW_MAX_BYTES} cap. "
+            f"Request a smaller max_px."
+        )
+
+    return {
+        "jpeg_base64": base64.b64encode(raw).decode("ascii"),
+        "bytes": len(raw),
+        "width": int(frame.shape[1]),
+        "height": int(frame.shape[0]),
+        "sharpness": sharpness,
+    }
