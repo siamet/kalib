@@ -95,6 +95,13 @@ def test_preview_returns_base64_jpeg_within_the_cap(registry):
     assert len(raw) <= PREVIEW_MAX_BYTES
 
 
+def test_preview_rejects_an_image_over_the_size_cap(registry, monkeypatch):
+    """The cap is enforced, not merely configured."""
+    monkeypatch.setattr("kalib.server.commands.PREVIEW_MAX_BYTES", 10)
+    with pytest.raises(CommandError):
+        registry.dispatch("preview", {"max_px": 256})
+
+
 def test_preview_downscales_to_the_requested_size(registry):
     """The long edge is reduced to max_px."""
     result = registry.dispatch("preview", {"max_px": 128})
