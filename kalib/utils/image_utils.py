@@ -31,15 +31,17 @@ def save_image(image: np.ndarray, filepath: str, format: str = 'tiff') -> None:
     # Save based on format
     try:
         if format.lower() in ['tif', 'tiff']:
-            cv2.imwrite(filepath, image, [cv2.IMWRITE_TIFF_COMPRESSION, 1])
+            ok = cv2.imwrite(filepath, image, [cv2.IMWRITE_TIFF_COMPRESSION, 1])
         elif format.lower() in ['png']:
-            cv2.imwrite(filepath, image, [cv2.IMWRITE_PNG_COMPRESSION, 3])
+            ok = cv2.imwrite(filepath, image, [cv2.IMWRITE_PNG_COMPRESSION, 3])
         elif format.lower() in ['jpg', 'jpeg']:
-            cv2.imwrite(filepath, image, [cv2.IMWRITE_JPEG_QUALITY, 95])
+            ok = cv2.imwrite(filepath, image, [cv2.IMWRITE_JPEG_QUALITY, 95])
         elif format.lower() in ['bmp']:
-            cv2.imwrite(filepath, image)
+            ok = cv2.imwrite(filepath, image)
         else:
             raise ValueError(f"Unsupported image format: {format}")
+        if not ok:
+            raise IOError(f"Failed to save image: {filepath}")
     except Exception as e:
         raise IOError(f"Failed to save image: {e}") from e
 
