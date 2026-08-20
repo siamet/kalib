@@ -66,12 +66,24 @@ kalib/
 │   │   ├── calibration_widget.py
 │   │   └── settings_dialog.py
 │   │
+│   ├── server/                 # REMOTE OPERATION
+│   │   ├── protocol.py         # Newline-delimited JSON, version 1
+│   │   ├── commands.py         # CommandRegistry + dispatch table
+│   │   ├── handlers.py         # Device, capture and focus handlers
+│   │   ├── handlers_scan.py    # Scan job handlers
+│   │   └── daemon.py           # QTcpServer bound to 127.0.0.1
+│   │
+│   ├── cli/                    # Thin client, invoked over SSH
+│   │   └── client.py
+│   │
 │   ├── hardware/               # Hardware Abstraction Layer
 │   │   ├── base.py             # Abstract base class
 │   │   ├── ids_camera.py       # IDS camera driver
 │   │   ├── pi_stage_xy.py      # PI XY stage
 │   │   ├── pi_stage_z.py       # PI Z stage
-│   │   └── led_driver.py       # LED controller
+│   │   ├── led_driver.py       # LED driver (no controller drives it yet)
+│   │   ├── factory.py          # Builds real or simulated devices
+│   │   └── sim/                # Simulated devices sharing one SimWorld
 │   │
 │   ├── algorithms/             # Scientific Algorithms
 │   │   ├── sharpness.py        # Focus quality metrics
@@ -331,6 +343,19 @@ HardwareError
 └── TimeoutError
 ```
 
+## Remote Operation
+
+The instrument runs on a separate machine. `--serve` starts a `QTcpServer`
+inside the existing Qt event loop, bound to 127.0.0.1 only, so command
+handlers call the controllers directly on the main thread with no
+cross-thread marshalling. SSH provides the network hop and authentication;
+the server implements none of its own.
+
+Full-resolution frames never cross the command channel — `snap` writes to the
+instrument's disk and returns a path, and `preview` is the only command
+returning pixels, downscaled and size-capped. See
+[REMOTE_OPERATION.md](REMOTE_OPERATION.md).
+
 ## Data Flow Examples
 
 ### Scanning Workflow
@@ -375,7 +400,13 @@ CameraController emits settings_changed signal
 
 ## Testing Strategy
 
-**Test Coverage >80%**:
+**Test Coverage**:
+
+Measured 2026-08-21 with `pytest --cov=kalib`: **47% overall**. Server and CLI
+sit at 93-100%; the Qt view layer is 7-15% and is effectively untested. Treat
+any coverage figure written into a document as stale unless it names the date
+it was measured.
+
 
 - **Unit Tests**: Models, algorithms, utilities
 - **Integration Tests**: Controllers with mocked hardware
