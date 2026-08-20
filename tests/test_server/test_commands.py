@@ -52,6 +52,48 @@ def test_status_reports_connection_state(registry):
     assert result["stage_z"]["connected"] is True
 
 
+def test_status_reports_not_scanning_when_no_scan_controller(registry):
+    """status reports scanning=False when no ScanController is wired up."""
+    result = registry.dispatch("status", {})
+    assert result["scanning"] is False
+
+
+def test_connect_reports_each_device(registry):
+    """connect works against already-connected hardware and reports a
+    per-device result rather than raising."""
+    result = registry.dispatch("connect", {})
+    assert set(result) == {"camera", "stage_xy", "stage_z"}
+    assert all(isinstance(v, bool) for v in result.values())
+
+
+def test_connect_succeeds_on_fresh_hardware():
+    """connect reports success when the devices were not yet connected."""
+    factory = HardwareFactory(FakeSettings({'hardware.backend': 'sim'}))
+    camera = CameraController(device=factory.create_camera())
+    stage = StageController(xy_device=factory.create_stage_xy(),
+                            z_device=factory.create_stage_z())
+    fresh_registry = CommandRegistry(camera=camera, stage=stage, scan=None,
+                                     calibration=None)
+    result = fresh_registry.dispatch("connect", {})
+    assert result["camera"] is True
+    assert result["stage_xy"] is True
+    assert result["stage_z"] is True
+
+
+def test_disconnect_reports_each_device(registry):
+    """disconnect reports a result per device."""
+    result = registry.dispatch("disconnect", {})
+    assert result["camera"] is True
+    assert result["stage_xy"] is True
+    assert result["stage_z"] is True
+
+
+def test_stop_halts_stage_motion(registry):
+    """stop reports that the stage was halted."""
+    result = registry.dispatch("stop", {})
+    assert result == {"stopped": True}
+
+
 def test_get_position_returns_all_three_axes(registry):
     """get_position reports x, y and z."""
     result = registry.dispatch("get_position", {})
