@@ -74,6 +74,10 @@ class CommandRegistry:
             "stop": _stop,
             "snap": _snap,
             "preview": _preview,
+            "autofocus": _autofocus,
+            "tilt_start": _tilt_start,
+            "tilt_measure": _tilt_measure,
+            "tilt_complete": _tilt_complete,
         }
 
     def command_names(self) -> List[str]:
@@ -288,3 +292,90 @@ def _preview(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, Any]:
         "height": int(frame.shape[0]),
         "sharpness": sharpness,
     }
+
+
+def _need_calibration(reg: CommandRegistry) -> "CalibrationController":
+    """Return the registry's calibration controller or raise.
+
+    Args:
+        reg: The registry to check
+
+    Returns:
+        The calibration controller
+
+    Raises:
+        CommandError: If the server was built without one
+    """
+    if reg.calibration is None:
+        raise CommandError("No calibration controller is available")
+    return reg.calibration
+
+
+def _autofocus(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Run a quick autofocus sweep.
+
+    This blocks until focus is found, because CalibrationController is not
+    threaded. Expect roughly one to three seconds for 20 steps.
+
+    Args:
+        reg: The registry whose calibration controller performs the sweep
+        args: Optional "num_steps" and "search_range"
+
+    Returns:
+        The focus height found and the resulting stage position
+
+    Raises:
+        CommandError: If autofocus does not converge
+    """
+    calibration = _need_calibration(reg)
+    focus_z = calibration.quick_autofocus(
+        num_steps=int(args.get("num_steps", 20)),
+        search_range=float(args.get("search_range", 2.0)),
+    )
+    if focus_z is None:
+        raise CommandError("Autofocus failed to find a focus position")
+    return {"focus_z": float(focus_z), "position": _position_dict(reg)}
+
+
+def _tilt_start(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Begin a tilt calibration sequence.
+
+    Args:
+        reg: The registry whose calibration controller is used
+        args: Optional "num_corners"
+
+    Returns:
+        Whether calibration started
+    """
+    started = _need_calibration(reg).start_tilt_calibration(
+        num_corners=int(args.get("num_corners", 4))
+    )
+    return {"started": bool(started)}
+
+
+def _tilt_measure(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Measure one tilt-calibration corner.
+
+    Args:
+        reg: The registry whose calibration controller is used
+        args: Required "corner_idx"
+
+    Returns:
+        Whether the measurement succeeded and the corner it measured
+    """
+    corner_idx = int(_require(args, "corner_idx"))
+    measured = _need_calibration(reg).measure_tilt_corner(corner_idx)
+    return {"measured": bool(measured), "corner_idx": corner_idx}
+
+
+def _tilt_complete(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Finish the tilt calibration and fit the plane.
+
+    Args:
+        reg: The registry whose calibration controller is used
+        args: Unused
+
+    Returns:
+        Whether the calibration completed successfully
+    """
+    return {"completed": bool(_need_calibration(reg).complete_tilt_calibration())}
