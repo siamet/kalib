@@ -3,6 +3,13 @@
 
 import sys
 
+# This script prints status symbols that a non-UTF-8 console codepage cannot
+# encode - the instrument machine runs cp950, where the default would raise
+# UnicodeEncodeError before any diagnostic output appeared.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 try:
     from pipython import GCSDevice, pitools
     print("✅ pipython library is installed")
@@ -10,6 +17,23 @@ except ImportError as e:
     print(f"❌ pipython not available: {e}")
     print("   Install with: pip install pipython")
     sys.exit(1)
+
+def _as_lines(devices):
+    """Normalise EnumerateUSB output to a list of device strings.
+
+    pipython 2.11 returns a list; older versions returned a newline-joined
+    string. Accept either.
+
+    Args:
+        devices: Whatever EnumerateUSB returned
+
+    Returns:
+        List of non-empty device description strings
+    """
+    if isinstance(devices, str):
+        devices = devices.split("\n")
+    return [str(d).strip() for d in devices if str(d).strip()]
+
 
 def enumerate_usb_devices():
     """Try to enumerate available PI devices."""
@@ -25,9 +49,8 @@ def enumerate_usb_devices():
             devices = gcs_z.EnumerateUSB()
             if devices:
                 print(f"  Found {len(devices)} E-816 device(s):")
-                for dev in devices.split('\n'):
-                    if dev.strip():
-                        print(f"    - {dev}")
+                for dev in _as_lines(devices):
+                    print(f"    - {dev}")
             else:
                 print("  ⚠ No E-816 devices found")
         except Exception as e:
@@ -40,9 +63,8 @@ def enumerate_usb_devices():
             devices = gcs_xy.EnumerateUSB()
             if devices:
                 print(f"  Found {len(devices)} E-725 device(s):")
-                for dev in devices.split('\n'):
-                    if dev.strip():
-                        print(f"    - {dev}")
+                for dev in _as_lines(devices):
+                    print(f"    - {dev}")
             else:
                 print("  ⚠ No E-725 devices found")
         except Exception as e:
