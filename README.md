@@ -385,6 +385,25 @@ proportion to defocus, so autofocus and tilt calibration behave as they do
 on the instrument. Set `hardware.backend` to `sim` in configuration to make
 this the default.
 
+### Operating the Instrument Remotely
+
+Run Kalib on the instrument machine with a command server attached:
+
+```bash
+python -m kalib.main --serve
+```
+
+Then drive it from another machine over SSH:
+
+```bash
+ssh <instrument-host> python -m kalib.cli move-xy --x 10 --y 20
+ssh <instrument-host> python -m kalib.cli snap --path C:\data\shot.tiff
+```
+
+See [docs/REMOTE_OPERATION.md](docs/REMOTE_OPERATION.md) for the full command
+set. Live preview stays on the instrument's screen; only `preview` returns
+image data, downscaled and compressed.
+
 ### Code Style
 
 - **Python**: PEP 8 compliant
