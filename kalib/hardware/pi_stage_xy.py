@@ -24,6 +24,28 @@ from kalib.hardware.base import (
 )
 
 
+SERVO_AXES = 2  # X and Y; any further controller channels stay off
+
+
+def servo_flags(num_axes: int, enabled: int = SERVO_AXES) -> List[int]:
+    """Build the per-axis servo flag list for an SVO call.
+
+    The controller may expose more channels than the stage uses — the E-725
+    here reports three for a two-axis P-733.2CD, leaving channel 3 wired to
+    nothing. Closed-loop control must stay off for those: an unconnected
+    channel reports a meaningless sensor value, so enabling its servo would
+    drive the piezo output to its rail chasing an error it can never correct.
+
+    Args:
+        num_axes: Number of axes the controller reports
+        enabled: How many leading axes carry the stage
+
+    Returns:
+        A flag per axis: 1 for the stage's axes, 0 for the rest
+    """
+    return [1 if i < enabled else 0 for i in range(num_axes)]
+
+
 class PIStageXY(HardwareDevice):
     """PI E-725 XY Stage driver.
 
@@ -120,10 +142,13 @@ class PIStageXY(HardwareDevice):
                     f"Expected at least 2 axes, found {len(self._axes)}"
                 )
 
-            # Enable servo for X and Y axes (axes[0] and axes[1])
-            # Third axis (Z) is disabled with 0
-            self._gcs_device.SVO(self._axes, [1, 1, 0])
-            self._logger.debug("Servo enabled for X and Y axes")
+            # Enable servo for the stage's axes only. Any further channels
+            # the controller exposes are left off - see servo_flags.
+            self._gcs_device.SVO(self._axes, servo_flags(len(self._axes)))
+            self._logger.debug(
+                f"Servo enabled for the first {SERVO_AXES} of "
+                f"{len(self._axes)} axes"
+            )
 
             # Set velocity if supported
             try:
@@ -148,7 +173,7 @@ class PIStageXY(HardwareDevice):
             if self._gcs_device is not None:
                 # Disable servo
                 try:
-                    self._gcs_device.SVO(self._axes, [0, 0, 0])
+                    self._gcs_device.SVO(self._axes, [0] * len(self._axes))
                     self._logger.debug("Servo disabled")
                 except Exception as e:
                     self._logger.warning(f"Could not disable servo: {e}")
