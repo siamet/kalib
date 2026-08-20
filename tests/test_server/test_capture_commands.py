@@ -10,7 +10,8 @@ from kalib.controllers.camera_controller import CameraController
 from kalib.controllers.stage_controller import StageController
 from kalib.hardware.base import CommandError
 from kalib.hardware.factory import HardwareFactory
-from kalib.server.commands import PREVIEW_MAX_BYTES, CommandRegistry
+from kalib.server.commands import CommandRegistry
+from kalib.server.handlers import PREVIEW_MAX_BYTES
 
 
 class FakeSettings:
@@ -97,7 +98,7 @@ def test_preview_returns_base64_jpeg_within_the_cap(registry):
 
 def test_preview_rejects_an_image_over_the_size_cap(registry, monkeypatch):
     """The cap is enforced, not merely configured."""
-    monkeypatch.setattr("kalib.server.commands.PREVIEW_MAX_BYTES", 10)
+    monkeypatch.setattr("kalib.server.handlers.PREVIEW_MAX_BYTES", 10)
     with pytest.raises(CommandError):
         registry.dispatch("preview", {"max_px": 256})
 
