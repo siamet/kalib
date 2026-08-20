@@ -301,6 +301,26 @@ class KalibApplication:
             self._logger.error(f"Error during cleanup: {e}", exc_info=True)
 
 
+def _add_serve_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add the command-server arguments to a parser.
+
+    Args:
+        parser: Parser to extend
+    """
+    parser.add_argument(
+        '--serve',
+        action='store_true',
+        help="Run a localhost command server so the instrument can be driven remotely"
+    )
+
+    parser.add_argument(
+        '--serve-port',
+        type=int,
+        default=8765,
+        help="Port for the command server (default: 8765)"
+    )
+
+
 def parse_arguments(argv: Optional[List[str]] = None):
     """Parse command line arguments.
 
@@ -342,18 +362,7 @@ def parse_arguments(argv: Optional[List[str]] = None):
         help="Run against simulated hardware instead of the instrument"
     )
 
-    parser.add_argument(
-        '--serve',
-        action='store_true',
-        help="Run a localhost command server so the instrument can be driven remotely"
-    )
-
-    parser.add_argument(
-        '--serve-port',
-        type=int,
-        default=8765,
-        help="Port for the command server (default: 8765)"
-    )
+    _add_serve_arguments(parser)
 
     return parser.parse_args(argv)
 
