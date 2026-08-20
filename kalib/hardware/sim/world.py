@@ -18,13 +18,13 @@ class SimWorld:
         z_focus(x, y) = tilt_a * x + tilt_b * y + tilt_c
 
     Attributes:
-        x: Stage X position in mm
-        y: Stage Y position in mm
-        z: Stage Z position in mm
+        x: Stage X position in um
+        y: Stage Y position in um
+        z: Stage Z position in um
         led_brightness: LED level in raw device units
-        tilt_a: Focal plane gradient along X (mm of z per mm of x)
+        tilt_a: Focal plane gradient along X (um of z per um of x)
         tilt_b: Focal plane gradient along Y
-        tilt_c: Focal plane height at the origin, in mm
+        tilt_c: Focal plane height at the origin, in um
         width: Simulated sensor width in pixels
         height: Simulated sensor height in pixels
         seed: Seed for the synthetic sample pattern, so frames are repeatable
@@ -45,18 +45,18 @@ class SimWorld:
         """Return the in-focus z height at a position.
 
         Args:
-            x: X position in mm; defaults to the current stage X
-            y: Y position in mm; defaults to the current stage Y
+            x: X position in um; defaults to the current stage X
+            y: Y position in um; defaults to the current stage Y
 
         Returns:
-            The z height in mm at which that position is in focus
+            The z height in um at which that position is in focus
         """
         x = self.x if x is None else x
         y = self.y if y is None else y
         return self.tilt_a * x + self.tilt_b * y + self.tilt_c
 
     def defocus(self) -> float:
-        """Return absolute distance in mm between current z and focus.
+        """Return absolute distance in um between current z and focus.
 
         Returns:
             Distance from the focal plane; zero means perfectly focused

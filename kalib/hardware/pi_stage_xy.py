@@ -54,9 +54,9 @@ class PIStageXY(HardwareDevice):
 
         Args:
             device_id: USB device serial number
-            x_range: X-axis range (min, max) in mm
-            y_range: Y-axis range (min, max) in mm
-            velocity: Default velocity in mm/s
+            x_range: X-axis range (min, max) in um
+            y_range: Y-axis range (min, max) in um
+            velocity: Default velocity in um/s
             name: Custom name for the stage
         """
         if not PI_AVAILABLE:
@@ -129,7 +129,7 @@ class PIStageXY(HardwareDevice):
             try:
                 self._gcs_device.VEL(self._axes[0], self._velocity)
                 self._gcs_device.VEL(self._axes[1], self._velocity)
-                self._logger.debug(f"Velocity set to {self._velocity} mm/s")
+                self._logger.debug(f"Velocity set to {self._velocity} um/s")
             except Exception as e:
                 self._logger.warning(f"Could not set velocity: {e}")
 
@@ -182,8 +182,8 @@ class PIStageXY(HardwareDevice):
         """Validate and clamp position to limits.
 
         Args:
-            x: X position in mm
-            y: Y position in mm
+            x: X position in um
+            y: Y position in um
 
         Returns:
             Tuple of validated (x, y) positions
@@ -212,8 +212,8 @@ class PIStageXY(HardwareDevice):
         """Move to absolute position.
 
         Args:
-            x: Target X position in mm (None to keep current)
-            y: Target Y position in mm (None to keep current)
+            x: Target X position in um (None to keep current)
+            y: Target Y position in um (None to keep current)
             wait: Wait for movement to complete
             timeout: Timeout in seconds for movement
 
@@ -236,12 +236,12 @@ class PIStageXY(HardwareDevice):
             # Move X axis
             if x is not None:
                 self._gcs_device.MOV(self._axes[0], target_x)
-                self._logger.debug(f"Moving X to {target_x} mm")
+                self._logger.debug(f"Moving X to {target_x} um")
 
             # Move Y axis
             if y is not None:
                 self._gcs_device.MOV(self._axes[1], target_y)
-                self._logger.debug(f"Moving Y to {target_y} mm")
+                self._logger.debug(f"Moving Y to {target_y} um")
 
             # Wait for movement to complete
             if wait:
@@ -268,8 +268,8 @@ class PIStageXY(HardwareDevice):
         """Move relative to current position.
 
         Args:
-            dx: Relative X movement in mm
-            dy: Relative Y movement in mm
+            dx: Relative X movement in um
+            dy: Relative Y movement in um
             wait: Wait for movement to complete
             timeout: Timeout in seconds
 
@@ -286,7 +286,7 @@ class PIStageXY(HardwareDevice):
         """Get current XY position.
 
         Returns:
-            Tuple of (x, y) position in mm
+            Tuple of (x, y) position in um
 
         Raises:
             CommandError: If position query fails
@@ -341,7 +341,7 @@ class PIStageXY(HardwareDevice):
         """Set movement velocity.
 
         Args:
-            velocity: Velocity in mm/s
+            velocity: Velocity in um/s
 
         Raises:
             CommandError: If setting fails
@@ -352,7 +352,7 @@ class PIStageXY(HardwareDevice):
             self._gcs_device.VEL(self._axes[0], velocity)
             self._gcs_device.VEL(self._axes[1], velocity)
             self._velocity = velocity
-            self._logger.debug(f"Velocity set to {velocity} mm/s")
+            self._logger.debug(f"Velocity set to {velocity} um/s")
 
         except Exception as e:
             self._logger.error(f"Failed to set velocity: {e}")
@@ -362,7 +362,7 @@ class PIStageXY(HardwareDevice):
         """Get current velocity settings.
 
         Returns:
-            Tuple of (vx, vy) velocities in mm/s
+            Tuple of (vx, vy) velocities in um/s
 
         Raises:
             CommandError: If query fails

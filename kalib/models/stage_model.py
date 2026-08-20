@@ -246,7 +246,7 @@ class StageModel:
         """Get Euclidean distance to target position.
 
         Returns:
-            Distance in mm or None if no target
+            Distance in um or None if no target
         """
         if self._target_position is None:
             return None

@@ -156,8 +156,8 @@ Stages are connected independently:
 4. Useful for returning to saved positions
 
 **Step Sizes**:
-- XY step: Default 0.1 mm (adjustable 0.001-10 mm)
-- Z step: Default 0.01 mm (adjustable 0.0001-1 mm)
+- XY step: Default 0.1 µm (adjustable 0.001-10 µm)
+- Z step: Default 0.01 µm (adjustable 0.0001-1 µm)
 
 ### Position Display
 
@@ -187,7 +187,7 @@ Captures images in a 2D grid pattern.
 3. Configure parameters:
    - **Start X/Y**: Click "Use Current" or enter values
    - **End X/Y**: Define scan area endpoint
-   - **Step Size**: Distance between scan points (e.g., 0.1 mm)
+   - **Step Size**: Distance between scan points (e.g., 0.1 µm)
    - **Save Path**: Browse to select output directory
 
 4. Options:
@@ -219,7 +219,7 @@ Captures images at multiple Z (focus) positions.
 2. Configure:
    - **Start Z**: Starting focus position
    - **End Z**: Ending focus position
-   - **Step Size**: Z increment (e.g., 0.01 mm)
+   - **Step Size**: Z increment (e.g., 0.01 µm)
    - XY position: Uses current XY coordinates
 
 **Use Cases**:
@@ -292,7 +292,7 @@ This keeps the sample in focus across the entire scan area.
 
 **Quick Autofocus**:
 - Fast, single pass through Z range
-- Recommended search range: 0.5-1.0 mm
+- Recommended search range: 0.5-1.0 µm
 - Steps: 20-50 steps
 - Finds Z with maximum sharpness
 
@@ -342,7 +342,7 @@ Store and recall important stage positions.
 #### Stages
 - **XY Stage Device ID**: PI E-725 serial number
 - **Z Stage Device ID**: PI E-816.DB serial number
-- **Movement Limits**: Safety boundaries (mm)
+- **Movement Limits**: Safety boundaries (µm)
   - X Range: Default [0, 100]
   - Y Range: Default [0, 100]
   - Z Range: Default [0, 10]
