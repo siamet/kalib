@@ -62,6 +62,51 @@ def _handle_line(registry: CommandRegistry,
         return encode_error(request_id, exc), cmd, False
 
 
+def _shutdown_safe_state(registry: CommandRegistry) -> dict:
+    """Put the instrument into a safe state.
+
+    Stops acquisition and cancels any running scan. The stages are
+    deliberately left exactly where they are and are never homed: homing a
+    microscopy stage unattended risks driving the objective into the
+    sample, so parking is the safe failure mode and recovery is a human
+    decision.
+
+    Module-level, like _handle_line: it needs no daemon state, only the
+    registry to act on, so it does not belong on CommandDaemon itself and
+    keeps the class under the line-count cap. Each cleanup step is wrapped
+    separately so a failure in one does not prevent the other from running.
+
+    Args:
+        registry: Command registry whose camera and scan controllers are
+            put into a safe state
+
+    Returns:
+        What was actually stopped: {"acquisition_stopped": bool,
+        "scan_cancelled": bool}
+    """
+    acquisition_stopped = False
+    scan_cancelled = False
+
+    try:
+        if registry.camera is not None and registry.camera.is_acquiring:
+            acquisition_stopped = bool(registry.camera.stop_acquisition())
+    except Exception as exc:
+        _logger.error(f"Could not stop acquisition: {exc}")
+
+    try:
+        if registry.scan is not None and registry.scan.is_scanning:
+            scan_cancelled = bool(registry.scan.cancel_scan())
+    except Exception as exc:
+        _logger.error(f"Could not cancel scan: {exc}")
+
+    _logger.info(
+        f"Safe state: acquisition_stopped={acquisition_stopped}, "
+        f"scan_cancelled={scan_cancelled}; stages left in place"
+    )
+    return {"acquisition_stopped": acquisition_stopped,
+            "scan_cancelled": scan_cancelled}
+
+
 class CommandDaemon(QObject):
     """Serve commands over a loopback TCP socket.
 
@@ -119,8 +164,13 @@ class CommandDaemon(QObject):
         _logger.info(f"Command server listening on 127.0.0.1:{self.port}")
         return self.port
 
+    def shutdown_safe_state(self) -> dict:
+        """Put the instrument in a safe state; see _shutdown_safe_state."""
+        return _shutdown_safe_state(self._registry)
+
     def stop(self) -> None:
-        """Stop listening and drop any open connections."""
+        """Stop listening, put the instrument in a safe state, drop clients."""
+        self.shutdown_safe_state()
         for sock in list(self._buffers):
             sock.disconnectFromHost()
         self._buffers.clear()
