@@ -4,6 +4,7 @@ Refactored from interface.py with improved error handling,
 logging, and integration with hardware base class.
 """
 
+import re
 from typing import Optional, List, Tuple, Dict, Any
 import numpy as np
 
@@ -25,6 +26,45 @@ from kalib.hardware.base import (
     ConfigurationError,
     TimeoutError
 )
+
+
+VALID_BIT_RATES = (8, 10, 12)
+
+
+def parse_pixel_format(name: str) -> Tuple[int, Optional[str]]:
+    """Parse a configured pixel format name into driver arguments.
+
+    "auto" asks the camera for its own native colour mode, which avoids
+    converting a monochrome sensor's frames up to RGB and tripling them for
+    no added information. Explicit names override that.
+
+    Args:
+        name: Format name such as "auto", "Mono8", "RGB8" or "Mono12"
+
+    Returns:
+        Tuple of (bit_rate, colorness), where colorness is None for "auto"
+
+    Raises:
+        ConfigurationError: If the name is not a recognised format
+    """
+    text = (name or "auto").strip()
+    if text.lower() in ("auto", "native"):
+        return (8, None)
+
+    match = re.fullmatch(r"(Mono|RGB)(\d+)", text, flags=re.IGNORECASE)
+    if not match:
+        raise ConfigurationError(
+            f"Unrecognised pixel format '{name}'. "
+            f"Use 'auto', or a name like 'Mono8', 'Mono12' or 'RGB8'."
+        )
+
+    colorness = "Mono" if match.group(1).lower() == "mono" else "RGB"
+    bit_rate = int(match.group(2))
+    if bit_rate not in VALID_BIT_RATES:
+        raise ConfigurationError(
+            f"Bit rate {bit_rate} not supported. Valid: {list(VALID_BIT_RATES)}"
+        )
+    return (bit_rate, colorness)
 
 
 class IDSCamera(HardwareDevice):

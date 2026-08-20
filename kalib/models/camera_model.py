@@ -15,7 +15,7 @@ class CameraSettings:
     exposure_time: float = 15000.0  # microseconds
     gain: float = 1.0
     fps: float = 30.0
-    pixel_format: str = "RGB8"
+    pixel_format: str = "auto"
     auto_exposure: bool = False
 
 

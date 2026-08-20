@@ -3,6 +3,12 @@
 
 import sys
 import logging
+
+# This script prints status symbols that a non-UTF-8 console codepage cannot
+# encode - the instrument machine runs cp950.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 from kalib.hardware.ids_camera import IDSCamera
 from kalib.utils.logger import setup_logging
 

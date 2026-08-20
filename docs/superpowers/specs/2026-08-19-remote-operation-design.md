@@ -10,6 +10,23 @@ attached to a separate Windows machine. We want to operate the instrument
 and iterate on the code from the Linux machine.
 
 ## Constraints
+> **Correction (2026-08-20, verified on the instrument).** The camera is a
+> **U3-389xCP-M** — a *monochrome* sensor, confirmed by querying it: the only
+> formats it offers are `Mono8, Mono10p, Mono12p, Mono10, Mono12`. A native
+> frame is therefore **4000 x 3000 x 1 = 12 MB**, not 36 MB.
+>
+> The 36 MB figure below was nonetheless accurate for what the application
+> actually did: it requested RGB8 regardless of the sensor, so the driver
+> converted every mono frame up to three channels, tripling it for no added
+> information. That is now fixed — the configured format defaults to `auto`,
+> which defers to the sensor — and the application yields 12 MB frames,
+> measured on the hardware.
+>
+> **Every conclusion in this document still holds.** 12 MB at 33.2 fps is
+> ~400 MB/s against a gigabit link's ~118 MB/s: a 3.4x shortfall rather than
+> 10x, so full-resolution streaming remains impossible and pixels still do not
+> belong on the command channel. Read the figures below as 12 MB and 3.4x.
+
 
 These were verified against the hardware, the vendor documentation, and
 the code, rather than assumed. They drive every decision below.
