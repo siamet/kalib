@@ -1,5 +1,7 @@
 """Tests for the command registry and immediate commands."""
 
+from pathlib import Path
+
 import pytest
 
 from kalib.controllers.camera_controller import CameraController
@@ -135,3 +137,42 @@ def test_command_names_are_listed(registry):
     names = registry.command_names()
     assert "status" in names
     assert "move_xy" in names
+
+
+def test_start_acquisition_makes_status_report_acquiring(registry):
+    """start_acquisition brings the camera to acquiring=True."""
+    result = registry.dispatch("start_acquisition", {})
+    assert result == {"acquiring": True}
+    status = registry.dispatch("status", {})
+    assert status["camera"]["acquiring"] is True
+
+
+def test_stop_acquisition_returns_to_not_acquiring(registry):
+    """stop_acquisition reverses start_acquisition."""
+    registry.dispatch("start_acquisition", {})
+    result = registry.dispatch("stop_acquisition", {})
+    assert result == {"acquiring": False}
+    status = registry.dispatch("status", {})
+    assert status["camera"]["acquiring"] is False
+
+
+def test_snap_succeeds_after_connect_and_start_acquisition(tmp_path):
+    """The remote-only path -- connect, then start_acquisition, then snap --
+    must work with no local GUI interaction, since that is the whole point
+    of exposing start_acquisition as a command. Uses fresh, unconnected
+    hardware and drives every step through registry.dispatch, exactly as a
+    real client would over the wire."""
+    factory = HardwareFactory(FakeSettings({'hardware.backend': 'sim'}))
+    camera = CameraController(device=factory.create_camera())
+    stage = StageController(xy_device=factory.create_stage_xy(),
+                            z_device=factory.create_stage_z())
+    fresh_registry = CommandRegistry(camera=camera, stage=stage, scan=None,
+                                     calibration=None)
+
+    fresh_registry.dispatch("connect", {})
+    fresh_registry.dispatch("start_acquisition", {})
+
+    target = tmp_path / "shot.tiff"
+    result = fresh_registry.dispatch("snap", {"path": str(target)})
+    assert Path(result["path"]).exists()
+    assert result["width"] > 0 and result["height"] > 0

@@ -82,13 +82,15 @@ section). Every example below is real output, not illustrative.
 | Command | Example | What it does |
 |---|---|---|
 | `status` | `kalib.cli status` | Connection/acquisition state of camera, both stages, and whether a scan job is running. |
-| `connect` | `kalib.cli connect` | Connects the camera and both stages. Returns `{"camera": true, "stage_xy": true, "stage_z": true}` per device that succeeded. Does **not** start acquisition — see [How images come back](#how-images-come-back). |
+| `connect` | `kalib.cli connect` | Connects the camera and both stages. Returns `{"camera": true, "stage_xy": true, "stage_z": true}` per device that succeeded. Does **not** start acquisition — call `start_acquisition` next. |
 | `disconnect` | `kalib.cli disconnect` | Disconnects the camera and both stages. Also stops acquisition if it was running. |
 | `get_position` | `kalib.cli get-position` | Returns `{"x": ..., "y": ..., "z": ...}`. |
 | `move_xy` | `kalib.cli move-xy --x 10 --y 20` | Moves the XY stage to an absolute position; returns the resulting `x`, `y`, `z`. |
 | `move_z` | `kalib.cli move-z --z 5` | Moves the Z stage to an absolute position. |
 | `move_rel` | `kalib.cli move-rel --dx 1 --dy 1 --dz 0.1` | Moves all three axes by a relative offset; omitted axes default to 0. |
 | `stop` | `kalib.cli stop` | Stops stage motion immediately; returns `{"stopped": true}`. |
+| `start_acquisition` | `kalib.cli start-acquisition` | Starts camera acquisition; returns `{"acquiring": true}`. Required before `snap`/`preview` will succeed. |
+| `stop_acquisition` | `kalib.cli stop-acquisition` | Stops camera acquisition; returns `{"acquiring": false}`. |
 | `snap` | `kalib.cli snap --path /tmp/shot.tiff` | Captures a full-resolution frame, writes it plus a JSON sidecar to disk on the instrument, and returns the metadata (never pixels). |
 | `preview` | `kalib.cli preview --max_px 256` | Captures, downscales, JPEG-compresses and returns the image inline, plus a sharpness value. The only command that returns pixels. |
 | `autofocus` | `kalib.cli autofocus` | Runs a blocking quick-focus sweep (default 20 steps); returns the focus height found and the resulting position. Not a job — it just makes you wait. |
@@ -121,13 +123,36 @@ $ python -m kalib.cli get-position
 ```
 
 **Operational note, verified against the running server:** `connect` brings
-the camera and stages online but does not start acquisition, and there is
-no wire command to start it remotely — that switch lives only in the
-Camera tab of the GUI. `snap` and `preview` both call the same capture path,
-which fails with `CommandError: Capture failed. Is acquisition started?`
-until acquisition has been started, once, on the instrument (locally, or
-over RDP — see [Live preview](#live-preview-and-continuous-viewing)). After
-that, remote `snap`/`preview` calls work for the rest of the session.
+the camera and stages online but does not start acquisition. `snap` and
+`preview` both call the same capture path, which fails with
+`CommandError: Capture failed. Is acquisition started? Call
+start_acquisition.` until acquisition has been started. `start_acquisition`
+is the command for that — the normal opening sequence for a session is
+`connect`, then `start_acquisition`, then whatever captures or moves you
+need. Verified end to end against a freshly started server, with no local
+GUI interaction:
+
+```bash
+$ python -m kalib.cli connect
+{"camera": true, "stage_xy": true, "stage_z": true}
+$ python -m kalib.cli snap --path shot.tiff
+error: CommandError: Capture failed. Is acquisition started? Call start_acquisition.
+$ python -m kalib.cli start-acquisition
+{"acquiring": true}
+$ python -m kalib.cli snap --path shot.tiff
+{
+  "path": "shot.tiff",
+  "width": 640,
+  "height": 480,
+  "dtype": "uint8",
+  "position": {"x": 50.0, "y": 50.0, "z": 5.0},
+  "sharpness": 23.64723067490332,
+  "timestamp": "2026-08-20T16:46:21"
+}
+```
+
+`stop_acquisition` reverses it; `disconnect` also stops acquisition if it
+was running.
 
 ## How images come back
 

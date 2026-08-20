@@ -75,6 +75,8 @@ class CommandRegistry:
             "move_z": _move_z,
             "move_rel": _move_rel,
             "stop": _stop,
+            "start_acquisition": _start_acquisition,
+            "stop_acquisition": _stop_acquisition,
             "snap": _snap,
             "preview": _preview,
             "autofocus": _autofocus,
@@ -194,6 +196,38 @@ def _move_rel(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, float]:
 def _stop(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, Any]:
     """Stop stage motion immediately."""
     return {"stopped": reg.stage.stop_movement()}
+
+
+def _start_acquisition(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Start camera acquisition so captures can succeed.
+
+    snap and preview both require acquisition to already be running;
+    without a remote way to start it, an operator connecting only over
+    SSH would have no path to a working snap/preview.
+
+    Args:
+        reg: The registry whose camera controller is started
+        args: Unused
+
+    Returns:
+        The resulting acquisition state
+    """
+    reg.camera.start_acquisition()
+    return {"acquiring": reg.camera.is_acquiring}
+
+
+def _stop_acquisition(reg: CommandRegistry, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Stop camera acquisition.
+
+    Args:
+        reg: The registry whose camera controller is stopped
+        args: Unused
+
+    Returns:
+        The resulting acquisition state
+    """
+    reg.camera.stop_acquisition()
+    return {"acquiring": reg.camera.is_acquiring}
 
 
 def _capture(reg: CommandRegistry) -> np.ndarray:
