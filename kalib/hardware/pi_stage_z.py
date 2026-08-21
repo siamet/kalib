@@ -24,6 +24,54 @@ from kalib.hardware.base import (
 )
 
 
+#: How close a reading must be to the target before the stage counts as
+#: arrived, in micrometres. The P-725.4CD's servo settles with a steady-state
+#: residual of roughly 40 nm, measured on the bench, so a tighter tolerance
+#: than this would never converge. It is still an eighth of the 800 nm depth
+#: of field at NA 0.75.
+SETTLE_TOLERANCE_UM = 0.1
+
+
+def wait_until_settled(read_position, target, tolerance=SETTLE_TOLERANCE_UM,
+                       timeout=30.0, interval=0.01, now=None, sleep=None):
+    """Block until a position reading reaches the target, or time out.
+
+    The E-816 answers qONT True before the actuator has moved: measured on the
+    bench, the flag was already True at t=0.00 with the stage 4.94 um short of
+    a 5 um move. Waiting on it is therefore a no-op, and a caller that moves
+    and immediately reads position gets a value the stage was passing through.
+    Waiting on the position itself is the only reliable test on this hardware.
+
+    Args:
+        read_position: Callable returning the current position in um
+        target: Where the stage was told to go, in um
+        tolerance: How close counts as arrived, in um
+        timeout: Seconds to wait before giving up
+        interval: Seconds between readings
+        now: Clock function, injectable for tests
+        sleep: Sleep function, injectable for tests
+
+    Returns:
+        The reading that satisfied the tolerance
+
+    Raises:
+        TimeoutError: If the stage never arrives, reporting where it got to
+    """
+    now = now or time.time
+    sleep = sleep or time.sleep
+    started = now()
+    position = read_position()
+    while abs(position - target) > tolerance:
+        if now() - started > timeout:
+            raise TimeoutError(
+                f"Stage did not reach {target} um within {timeout}s; "
+                f"stopped at {position} um"
+            )
+        sleep(interval)
+        position = read_position()
+    return position
+
+
 class PIStageZ(HardwareDevice):
     """PI E-816.DB Z Stage driver.
 
@@ -208,15 +256,15 @@ class PIStageZ(HardwareDevice):
             self._gcs_device.MOV(self._axis, z)
             self._logger.debug(f"Moving Z to {z} um")
 
-            # Wait for movement to complete
+            # Wait for movement to complete. Not is_on_target(): the E-816
+            # reports on-target before the actuator has moved. See
+            # wait_until_settled.
             if wait:
-                start_time = time.time()
-                while not self.is_on_target():
-                    if time.time() - start_time > timeout:
-                        raise TimeoutError(
-                            f"Movement timeout after {timeout}s"
-                        )
-                    time.sleep(0.01)
+                wait_until_settled(
+                    lambda: self._gcs_device.qPOS(self._axis)[self._axis],
+                    target=z,
+                    timeout=timeout,
+                )
 
             # Update position
             self._update_position()
