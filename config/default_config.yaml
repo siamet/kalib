@@ -18,8 +18,12 @@ hardware:
 # Motion Stage Configuration
 stages:
   xy:
-    device_id: "113068710"        # PI E-725 device serial number
-    model: "E-725"                # Stage model
+    device_id: "113068710"        # PI E-725 controller serial number
+    controller: "E-725"           # digital controller; reports qCST per axis
+    model: "P-733.2CD"            # XY piezo flexure stage on axes 1 and 2
+    # Axis 3 of the E-725 is unconfigured (qCST reports 'P') and unused. Its
+    # qTMX of 10.0 is the default for an unassigned axis, not a real travel;
+    # reading it as the Z range is where the old z_range: [0, 10] came from.
     x_range: [0, 100]             # X-axis range in um
     y_range: [0, 100]             # Y-axis range in um
     default_step: 0.1             # Default step size in um
@@ -27,12 +31,21 @@ stages:
     acceleration: 100.0           # Acceleration in um/s^2
 
   z:
-    device_id: "112064239"        # PI E-816.DB device serial number
-    model: "E-816.DB"             # Stage model
-    z_range: [0, 10]              # Z-axis range in um
+    device_id: "112064239"        # E-816 interface submodule serial number
+    # The bench unit is a PI E-665 LVPZT amplifier. Its integrated computer
+    # interface is the E-816 submodule, which is what pipython enumerates and
+    # what qIDN reports ("PI-E816 V3.25"), so the front panel and the device ID
+    # disagree by design. The stage it drives is the PIFOC below.
+    controller: "E-665 (E-816 interface)"
+    model: "P-725.4CD"            # PIFOC objective scanner
+    z_range: [0, 400]             # Z-axis range in um, P-725.4CD datasheet
     default_step: 0.01            # Default step size in um
-    velocity: 1.0                 # Default velocity in um/s
-    acceleration: 10.0            # Acceleration in um/s^2
+    settle_tolerance: 0.1         # How close counts as arrived, in um.
+    # velocity and acceleration are NOT honoured by this stage and are left
+    # out deliberately. Measured on the bench: a 5 um move completed in under
+    # 0.26 s, i.e. at least 19 um/s, against a former velocity: 1.0 setting.
+    # The E-816 drives the piezo as fast as the amplifier allows; carrying a
+    # velocity here only misleads whoever reads it.
 
 # LED Light Configuration
 led:

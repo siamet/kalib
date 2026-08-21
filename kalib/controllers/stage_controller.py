@@ -8,6 +8,7 @@ from typing import Optional, Tuple
 from PySide6.QtCore import QObject, Signal
 
 from kalib.hardware import PIStageXY, PIStageZ, ConnectionError, CommandError, HardwareDevice
+from kalib.hardware.pi_stage_z import SETTLE_TOLERANCE_UM
 from kalib.models import StageModel, StageLimits
 from kalib.utils.logger import get_logger
 
@@ -34,7 +35,8 @@ class StageController(QObject):
                  z_device_id: Optional[str] = None,
                  limits: Optional[StageLimits] = None,
                  xy_device: Optional[HardwareDevice] = None,
-                 z_device: Optional[HardwareDevice] = None):
+                 z_device: Optional[HardwareDevice] = None,
+                 settle_tolerance: float = SETTLE_TOLERANCE_UM):
         """Initialize stage controller.
 
         Args:
@@ -43,6 +45,8 @@ class StageController(QObject):
             limits: Stage movement limits
             xy_device: Pre-built XY stage to use instead of a PIStageXY
             z_device: Pre-built Z stage to use instead of a PIStageZ
+            settle_tolerance: How close a Z reading must be to the target
+                before a move counts as complete, in um
         """
         super().__init__()
 
@@ -50,6 +54,7 @@ class StageController(QObject):
 
         # Models and hardware
         self.model = StageModel(limits or StageLimits())
+        self.settle_tolerance = settle_tolerance
         self._xy_stage: Optional[HardwareDevice] = None
         self._z_stage: Optional[HardwareDevice] = None
 
@@ -172,7 +177,8 @@ class StageController(QObject):
             else:
                 self._z_stage = PIStageZ(
                     device_id=device_id,
-                    z_range=(self.model.limits.z_min, self.model.limits.z_max)
+                    z_range=(self.model.limits.z_min, self.model.limits.z_max),
+                    settle_tolerance=self.settle_tolerance,
                 )
 
             # Connect
@@ -228,6 +234,36 @@ class StageController(QObject):
             self.error_occurred.emit(error_msg)
             return False
 
+    def _require_within_limits(self, x: Optional[float] = None,
+                               y: Optional[float] = None,
+                               z: Optional[float] = None) -> None:
+        """Reject a target outside the configured travel.
+
+        The hardware layer clamps out-of-range targets and logs a warning, so
+        a caller that trusts its own commanded positions gets a stack whose
+        axis is silently wrong at the ends. Fail before moving instead, and
+        leave the stage where it was.
+
+        Args:
+            x: Target X in um, or None to keep the current value
+            y: Target Y in um, or None to keep the current value
+            z: Target Z in um, or None to keep the current value
+
+        Raises:
+            CommandError: If any supplied axis lies outside its travel
+        """
+        limits = self.model.limits
+        for axis, value, low, high in (
+            ("x", x, limits.x_min, limits.x_max),
+            ("y", y, limits.y_min, limits.y_max),
+            ("z", z, limits.z_min, limits.z_max),
+        ):
+            if value is not None and not low <= value <= high:
+                raise CommandError(
+                    f"{axis}={value} um is outside the stage travel "
+                    f"[{low}, {high}] um"
+                )
+
     def move_absolute(self, x: Optional[float] = None,
                      y: Optional[float] = None,
                      z: Optional[float] = None,
@@ -247,6 +283,7 @@ class StageController(QObject):
             connected).
         """
         try:
+            self._require_within_limits(x=x, y=y, z=z)
             self.movement_started.emit()
 
             # Move XY if specified
@@ -296,6 +333,12 @@ class StageController(QObject):
             connected).
         """
         try:
+            current = self.model.get_position()
+            self._require_within_limits(
+                x=current.x + dx if dx else None,
+                y=current.y + dy if dy else None,
+                z=current.z + dz if dz else None,
+            )
             self.movement_started.emit()
 
             # Move XY if specified

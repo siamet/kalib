@@ -257,12 +257,18 @@ def _snap(reg: "CommandRegistry", args: Dict[str, Any]) -> Dict[str, Any]:
     # save_image() already creates the parent directory.
     save_image(frame, str(path), format=path.suffix.lstrip("."))
 
+    settings = reg.camera.get_current_settings()
     meta = {
         "path": str(path),
         "width": int(frame.shape[1]),
         "height": int(frame.shape[0]),
         "dtype": str(frame.dtype),
         "position": _position_dict(reg),
+        # Exposure and gain make the capture reproducible. A frame whose
+        # exposure is unrecorded cannot be compared against another frame,
+        # matched to a master dark, or re-shot.
+        "exposure_time": settings.get("exposure_time"),
+        "gain": settings.get("gain"),
         "sharpness": float(gradient_sharpness(frame)),
         "timestamp": datetime.now().isoformat(timespec="seconds"),
     }
