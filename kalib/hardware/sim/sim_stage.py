@@ -155,7 +155,7 @@ class SimStageZ(HardwareDevice):
 
     def __init__(self, world: SimWorld, device_id: Optional[str] = None,
                  name: Optional[str] = None,
-                 z_range: Tuple[float, float] = (0.0, 10.0)):
+                 z_range: Tuple[float, float] = (0.0, 400.0)):
         """Initialize the simulated Z stage.
 
         Args:

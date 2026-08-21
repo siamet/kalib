@@ -312,7 +312,7 @@ stages:
     x_range: [0, 100]
   z:
     device_id: "112064239"
-    z_range: [0, 10]
+    z_range: [0, 400]
 
 paths:
   data_dir: "./data"

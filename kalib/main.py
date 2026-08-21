@@ -183,7 +183,7 @@ class KalibApplication:
 
         xy_x_range = self.settings.get('stages.xy.x_range', [0.0, 100.0])
         xy_y_range = self.settings.get('stages.xy.y_range', [0.0, 100.0])
-        z_range = self.settings.get('stages.z.z_range', [0.0, 10.0])
+        z_range = self.settings.get('stages.z.z_range', [0.0, 400.0])
 
         return StageLimits(
             x_min=xy_x_range[0],

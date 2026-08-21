@@ -88,7 +88,7 @@ class HardwareFactory:
         if self._backend == SIM:
             from kalib.hardware.sim.sim_stage import SimStageZ
             return SimStageZ(self._world, device_id=device_id,
-                             z_range=z_range or (0.0, 10.0))
+                             z_range=z_range or (0.0, 400.0))
         from kalib.hardware.pi_stage_z import PIStageZ
         kwargs = {}
         if z_range is not None:

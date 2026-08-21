@@ -50,7 +50,7 @@ def test_config():
             },
             'z': {
                 'device_id': 'TEST_Z',
-                'z_range': [0, 10],
+                'z_range': [0, 400],
             }
         }
     }

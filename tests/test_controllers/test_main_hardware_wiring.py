@@ -84,4 +84,4 @@ def test_build_stage_limits_falls_back_to_defaults_when_unconfigured():
 
     assert (limits.x_min, limits.x_max) == (0.0, 100.0)
     assert (limits.y_min, limits.y_max) == (0.0, 100.0)
-    assert (limits.z_min, limits.z_max) == (0.0, 10.0)
+    assert (limits.z_min, limits.z_max) == (0.0, 400.0)
