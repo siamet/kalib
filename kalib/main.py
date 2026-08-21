@@ -14,6 +14,7 @@ from PySide6.QtCore import Qt
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import load_config, Settings
+from kalib.hardware.pi_stage_z import SETTLE_TOLERANCE_UM
 from kalib.utils.logger import setup_logging, get_logger
 from kalib.controllers import (
     CameraController,
@@ -155,7 +156,9 @@ class KalibApplication:
             z_device_id=z_device_id,
             limits=limits,
             xy_device=xy_device,
-            z_device=z_device
+            z_device=z_device,
+            settle_tolerance=self.settings.get(
+                'stages.z.settle_tolerance', SETTLE_TOLERANCE_UM),
         )
 
         self.scan = ScanController(

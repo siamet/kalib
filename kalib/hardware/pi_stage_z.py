@@ -93,7 +93,8 @@ class PIStageZ(HardwareDevice):
     def __init__(
         self,
         device_id: str,
-        z_range: Tuple[float, float] = (0.0, 10.0),
+        z_range: Tuple[float, float] = (0.0, 400.0),
+        settle_tolerance: float = SETTLE_TOLERANCE_UM,
         velocity: float = 1.0,
         axis: str = 'A',
         name: Optional[str] = None
@@ -102,8 +103,14 @@ class PIStageZ(HardwareDevice):
 
         Args:
             device_id: USB device serial number
-            z_range: Z-axis range (min, max) in um
-            velocity: Default velocity in um/s
+            z_range: Z-axis range (min, max) in um; the P-725.4CD gives 400
+            settle_tolerance: How close a reading must be to the target before
+                the move counts as complete, in um. See wait_until_settled.
+            velocity: Requested velocity in um/s. Attempted at startup and
+                warned about if the controller rejects it; the E-816 drives the
+                piezo as fast as the amplifier allows, so on this hardware it
+                is not expected to take effect. Measured: a 5 um move ran at
+                19 um/s or better against a 1.0 setting.
             axis: Axis identifier (default: 'A')
             name: Custom name for the stage
         """
@@ -117,6 +124,7 @@ class PIStageZ(HardwareDevice):
         self._gcs_device = None
         self._axis = axis
         self._z_range = z_range
+        self._settle_tolerance = settle_tolerance
         self._velocity = velocity
         self._position: Optional[float] = None
 
@@ -204,6 +212,11 @@ class PIStageZ(HardwareDevice):
             except Exception as e:
                 self._logger.warning(f"Could not update position: {e}")
 
+    @property
+    def settle_tolerance(self) -> float:
+        """How close a reading must be to the target to count as arrived, um."""
+        return self._settle_tolerance
+
     def _validate_position(self, z: float) -> float:
         """Validate and clamp position to limits.
 
@@ -263,6 +276,7 @@ class PIStageZ(HardwareDevice):
                 wait_until_settled(
                     lambda: self._gcs_device.qPOS(self._axis)[self._axis],
                     target=z,
+                    tolerance=self._settle_tolerance,
                     timeout=timeout,
                 )
 

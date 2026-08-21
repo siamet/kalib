@@ -8,6 +8,7 @@ from typing import Optional, Tuple
 from PySide6.QtCore import QObject, Signal
 
 from kalib.hardware import PIStageXY, PIStageZ, ConnectionError, CommandError, HardwareDevice
+from kalib.hardware.pi_stage_z import SETTLE_TOLERANCE_UM
 from kalib.models import StageModel, StageLimits
 from kalib.utils.logger import get_logger
 
@@ -34,7 +35,8 @@ class StageController(QObject):
                  z_device_id: Optional[str] = None,
                  limits: Optional[StageLimits] = None,
                  xy_device: Optional[HardwareDevice] = None,
-                 z_device: Optional[HardwareDevice] = None):
+                 z_device: Optional[HardwareDevice] = None,
+                 settle_tolerance: float = SETTLE_TOLERANCE_UM):
         """Initialize stage controller.
 
         Args:
@@ -43,6 +45,8 @@ class StageController(QObject):
             limits: Stage movement limits
             xy_device: Pre-built XY stage to use instead of a PIStageXY
             z_device: Pre-built Z stage to use instead of a PIStageZ
+            settle_tolerance: How close a Z reading must be to the target
+                before a move counts as complete, in um
         """
         super().__init__()
 
@@ -50,6 +54,7 @@ class StageController(QObject):
 
         # Models and hardware
         self.model = StageModel(limits or StageLimits())
+        self.settle_tolerance = settle_tolerance
         self._xy_stage: Optional[HardwareDevice] = None
         self._z_stage: Optional[HardwareDevice] = None
 
@@ -172,7 +177,8 @@ class StageController(QObject):
             else:
                 self._z_stage = PIStageZ(
                     device_id=device_id,
-                    z_range=(self.model.limits.z_min, self.model.limits.z_max)
+                    z_range=(self.model.limits.z_min, self.model.limits.z_max),
+                    settle_tolerance=self.settle_tolerance,
                 )
 
             # Connect
