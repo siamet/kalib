@@ -59,3 +59,30 @@ def test_connect_z_without_device_id_or_injection_fails():
 
     assert controller.connect_z_stage() is False
     assert errors == ["No Z stage device ID configured"]
+
+def test_z_move_beyond_the_limit_is_refused_not_clamped(controller, world):
+    """A move outside travel must fail loudly rather than land somewhere else.
+
+    The hardware clamps and logs a warning, so a caller that trusts its own
+    commanded positions builds a stack whose axis is wrong at the ends with
+    nothing raised. Refuse the move instead, and leave the stage where it was.
+    """
+    controller.connect_z_stage()
+    controller.move_absolute(z=5.0)
+    assert controller.move_absolute(z=99.0) is False
+    assert world.z == pytest.approx(5.0)
+
+
+def test_xy_move_beyond_the_limit_is_refused_not_clamped(controller, world):
+    """Same contract on the XY axes."""
+    controller.connect_xy_stage()
+    controller.move_absolute(x=10.0, y=20.0)
+    assert controller.move_absolute(x=500.0, y=20.0) is False
+    assert (world.x, world.y) == (pytest.approx(10.0), pytest.approx(20.0))
+
+
+def test_a_move_inside_the_limits_still_succeeds(controller, world):
+    """The guard must not reject legitimate moves."""
+    controller.connect_z_stage()
+    assert controller.move_absolute(z=9.5) is True
+    assert world.z == pytest.approx(9.5)

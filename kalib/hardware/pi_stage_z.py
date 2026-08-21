@@ -163,10 +163,13 @@ class PIStageZ(HardwareDevice):
             z: Z position in um
 
         Returns:
-            Validated Z position
+            The position clamped into range.
 
-        Raises:
-            ValueError: If position is outside valid range
+        Note:
+            This clamps and warns; it does not raise. It is the last-resort
+            guard, not the validation. StageController refuses an
+            out-of-range target before it reaches this layer, so a clamp
+            here means something bypassed the controller.
         """
         z_min, z_max = self._z_range
 

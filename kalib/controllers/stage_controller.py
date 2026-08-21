@@ -228,6 +228,36 @@ class StageController(QObject):
             self.error_occurred.emit(error_msg)
             return False
 
+    def _require_within_limits(self, x: Optional[float] = None,
+                               y: Optional[float] = None,
+                               z: Optional[float] = None) -> None:
+        """Reject a target outside the configured travel.
+
+        The hardware layer clamps out-of-range targets and logs a warning, so
+        a caller that trusts its own commanded positions gets a stack whose
+        axis is silently wrong at the ends. Fail before moving instead, and
+        leave the stage where it was.
+
+        Args:
+            x: Target X in um, or None to keep the current value
+            y: Target Y in um, or None to keep the current value
+            z: Target Z in um, or None to keep the current value
+
+        Raises:
+            CommandError: If any supplied axis lies outside its travel
+        """
+        limits = self.model.limits
+        for axis, value, low, high in (
+            ("x", x, limits.x_min, limits.x_max),
+            ("y", y, limits.y_min, limits.y_max),
+            ("z", z, limits.z_min, limits.z_max),
+        ):
+            if value is not None and not low <= value <= high:
+                raise CommandError(
+                    f"{axis}={value} um is outside the stage travel "
+                    f"[{low}, {high}] um"
+                )
+
     def move_absolute(self, x: Optional[float] = None,
                      y: Optional[float] = None,
                      z: Optional[float] = None,
@@ -247,6 +277,7 @@ class StageController(QObject):
             connected).
         """
         try:
+            self._require_within_limits(x=x, y=y, z=z)
             self.movement_started.emit()
 
             # Move XY if specified
@@ -296,6 +327,12 @@ class StageController(QObject):
             connected).
         """
         try:
+            current = self.model.get_position()
+            self._require_within_limits(
+                x=current.x + dx if dx else None,
+                y=current.y + dy if dy else None,
+                z=current.z + dz if dz else None,
+            )
             self.movement_started.emit()
 
             # Move XY if specified

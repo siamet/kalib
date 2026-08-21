@@ -211,10 +211,13 @@ class PIStageXY(HardwareDevice):
             y: Y position in um
 
         Returns:
-            Tuple of validated (x, y) positions
+            The (x, y) position clamped into range.
 
-        Raises:
-            ValueError: If position is outside valid range
+        Note:
+            This clamps and warns; it does not raise. It is the last-resort
+            guard, not the validation. StageController refuses an
+            out-of-range target before it reaches this layer, so a clamp
+            here means something bypassed the controller.
         """
         x_min, x_max = self._x_range
         y_min, y_max = self._y_range
