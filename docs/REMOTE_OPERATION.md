@@ -106,12 +106,12 @@ section). Every example below is real output, not illustrative.
 | `disconnect` | `kalib.cli disconnect` | Disconnects the camera and both stages. Also stops acquisition if it was running. |
 | `get_position` | `kalib.cli get-position` | Returns `{"x": ..., "y": ..., "z": ...}`. |
 | `move_xy` | `kalib.cli move-xy --x 10 --y 20` | Moves the XY stage to an absolute position; returns the resulting `x`, `y`, `z`. |
-| `move_z` | `kalib.cli move-z --z 5` | Moves the Z stage to an absolute position. |
+| `move_z` | `kalib.cli move-z --z 5` | Moves the Z stage to an absolute position. A target outside the configured travel is **refused** with `CommandError` and the stage does not move; see [Travel limits](#travel-limits). |
 | `move_rel` | `kalib.cli move-rel --dx 1 --dy 1 --dz 0.1` | Moves all three axes by a relative offset; omitted axes default to 0. |
 | `stop` | `kalib.cli stop` | Stops stage motion immediately; returns `{"stopped": true}`. |
 | `start_acquisition` | `kalib.cli start-acquisition` | Starts camera acquisition; returns `{"acquiring": true}`. Required before `snap`/`preview` will succeed. |
 | `stop_acquisition` | `kalib.cli stop-acquisition` | Stops camera acquisition; returns `{"acquiring": false}`. |
-| `snap` | `kalib.cli snap --path /tmp/shot.tiff` | Captures a full-resolution frame, writes it plus a JSON sidecar to disk on the instrument, and returns the metadata (never pixels). |
+| `snap` | `kalib.cli snap --path /tmp/shot.tiff` | Captures a full-resolution frame, writes it plus a JSON sidecar to disk on the instrument, and returns the metadata (never pixels). The sidecar carries exposure and gain alongside position and timestamp, so a capture can be reproduced. |
 | `preview` | `kalib.cli preview --max_px 256` | Captures, downscales, JPEG-compresses and returns the image inline, plus a sharpness value. The only command that returns pixels. |
 | `autofocus` | `kalib.cli autofocus` | Runs a blocking quick-focus sweep (default 20 steps); returns the focus height found and the resulting position. Not a job — it just makes you wait. |
 | `tilt_start` | `kalib.cli tilt-start --num_corners 4` | Begins a tilt calibration sequence; returns `{"started": true}`. |
@@ -200,15 +200,23 @@ scratch area used for this document rather than `C:\data\shot.tiff`):
 
 ```json
 {
-  "path": "/tmp/.../shots/shot2.tiff",
+  "path": "/tmp/.../shot.tiff",
   "width": 640,
   "height": 480,
   "dtype": "uint8",
-  "position": { "x": 10.0, "y": 20.0, "z": 1.0 },
-  "sharpness": 0.0846,
-  "timestamp": "2026-08-20T16:02:28"
+  "position": { "x": 10.0, "y": 20.0, "z": 5.0 },
+  "exposure_time": 15000.0,
+  "gain": 1.0,
+  "sharpness": 23.65403196662758,
+  "timestamp": "2026-08-21T11:43:46"
 }
 ```
+
+`exposure_time` is microseconds, matching `set_exposure_time`. Both it and
+`gain` come from the camera at capture time rather than from a cached
+setting, so they describe the frame on disk. Note that there is no remote
+command to *set* exposure: it is set at the instrument, and the sidecar
+records whatever was in force.
 
 `preview` is the only command that returns image data. It downscales to a
 long edge of `max_px` (default 1024), JPEG-encodes, and hard-caps the
@@ -227,6 +235,29 @@ a base64-encoded `jpeg_base64` field.
 > (see below). Streaming full resolution is not possible at any useful frame
 > rate. Use `preview` for a quick look, and RDP to the instrument when you want
 > to watch continuously.
+
+## Travel limits
+
+Targets outside the configured travel are refused. `move_xy`, `move_z` and
+`move_rel` all validate against the range in `config` before anything is
+commanded, and raise `CommandError` naming the axis and the range:
+
+```bash
+$ python -m kalib.cli move-z --z 99
+error: CommandError: z=99.0 um is outside the stage travel [0.0, 10.0] um
+$ python -m kalib.cli get-position
+{"x": 50.0, "y": 50.0, "z": 5.0}
+```
+
+The stage stays where it was. This matters because the hardware layer's own
+guard **clamps** rather than refusing: before this check existed,
+`move-z --z 99` returned `{"z": 10.0}` and reported success, so a scan that
+trusted its commanded positions produced a stack whose axis was silently wrong
+at the ends. The clamp is still there as a last resort, but nothing should
+reach it through the controller.
+
+`move_rel` is validated on the resolved target, not the offset, so a small
+step from near the end of travel is refused rather than clamped.
 
 ## Units
 
