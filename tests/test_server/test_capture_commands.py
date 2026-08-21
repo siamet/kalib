@@ -57,6 +57,29 @@ def test_snap_writes_a_metadata_sidecar(registry, tmp_path):
     assert set(meta) >= {"position", "sharpness", "timestamp", "width", "height"}
 
 
+def test_snap_records_the_camera_settings_it_was_taken_with(registry, tmp_path):
+    """The sidecar must carry exposure and gain, not only where the stage was.
+
+    A frame whose exposure is unrecorded cannot be compared against any other
+    frame, cannot be matched to a master dark, and cannot be re-shot. Position
+    and timestamp alone do not make a capture reproducible.
+    """
+    target = tmp_path / "shot.tiff"
+    result = registry.dispatch("snap", {"path": str(target)})
+    meta = json.loads(target.with_suffix(".json").read_text())
+    assert "exposure_time" in meta and meta["exposure_time"] is not None
+    assert "gain" in meta
+    assert result["exposure_time"] == meta["exposure_time"]
+
+
+def test_snap_records_the_exposure_actually_in_force(registry, tmp_path):
+    """Changing exposure changes what the sidecar reports."""
+    registry.camera.set_exposure_time(4321.0)
+    target = tmp_path / "shot.tiff"
+    result = registry.dispatch("snap", {"path": str(target)})
+    assert result["exposure_time"] == pytest.approx(4321.0)
+
+
 def test_snap_records_the_position_it_was_taken_at(registry, tmp_path):
     """The sidecar's position matches where the stage actually was."""
     registry.dispatch("move_xy", {"x": 11.0, "y": 22.0})
