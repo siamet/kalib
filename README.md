@@ -17,7 +17,8 @@ Kalib is a comprehensive microscopy control system built with clean MVC architec
 - **IDS uEye Cameras** - Full control via IDS peak SDK
 - **PI E-725 XY Stage** - High-precision XY motion control
 - **PI E-816.DB Z Stage** - Focus control with piezo actuator
-- **LED Illumination** - serial driver exists (`led_driver.py`), but no controller or UI drives it yet
+- **Illumination** - currently manual; not yet controllable from software.
+  A serial LED controller is being sourced, and `led_driver.py` targets it.
 
 ### Core Capabilities
 - **XY Scanning** - Automated grid scanning with position tracking

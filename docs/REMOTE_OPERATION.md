@@ -122,8 +122,17 @@ section). Every example below is real output, not illustrative.
 | `job_status` | `kalib.cli job-status` | Reports the current job: `job_id`, `scanning`, `progress` (percent). |
 | `job_cancel` | `kalib.cli job-cancel` | Cancels the running scan; returns `{"cancelled": true}`. |
 
-There is no `set_led` command — the application has no LED controller to
-drive.
+There is no `set_led` command yet: illumination on this instrument is currently
+**manual**, set by hand at the bench and not driven from the SDK. A serial LED
+controller is being sourced, and `led_driver.py` is retained for it — when that
+hardware arrives, an LED controller and a `set_led` command are the pieces to
+add.
+
+This is the one thing a remote operator cannot do. A capture taken remotely
+uses whatever illumination was left set physically, so a frame can come back
+dark or saturated with nothing wrong in the software. Check the light before
+you leave the room, or expect to interpret `preview`'s sharpness figure against
+an unknown exposure.
 
 Verified real output for a representative sequence:
 
