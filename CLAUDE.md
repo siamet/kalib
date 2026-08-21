@@ -117,7 +117,8 @@ Model Layer (State) + Hardware Layer (Device Abstraction)
 - `kalib/hardware/ids_camera.py` - IDS uEye camera driver 
 - `kalib/hardware/pi_stage_xy.py` - PI E-725 XY stage
 - `kalib/hardware/pi_stage_z.py` - PI E-816.DB Z stage
-- `kalib/hardware/led_driver.py` - Serial LED driver (no controller drives it yet)
+- `kalib/hardware/led_driver.py` - Serial LED driver. Unused: illumination on
+  this instrument is manual and not software-controllable.
 - `kalib/hardware/sim/` - Simulated devices sharing one SimWorld
 - `kalib/hardware/factory.py` - Builds real or simulated devices from config
 
@@ -157,7 +158,9 @@ Model Layer (State) + Hardware Layer (Device Abstraction)
 - **Camera**: IDS uEye cameras (via IDS peak SDK)
 - **XY Stage**: PI E-725 controller (device ID: "113068710")
 - **Z Stage**: PI E-816.DB controller (device ID: "112064239")
-- **LED**: Serial driver present; not wired to any controller
+- **Illumination**: MANUAL. Not controllable from the SDK. Captures depend on
+  whatever the operator has set at the bench, so a remote capture can come back
+  dark with nothing wrong in software.
 
 **Units**: stage positions, steps and travel are **micrometres**. The E-725 drives a P-733.2CD (100 um XY); the E-816.DB gives 10 um in Z.
 **Camera**: U3-389xCP-M is **monochrome** - a frame is 4000x3000x1 = 12 MB. Leave `camera.pixel_format` on `auto` unless you know why not.

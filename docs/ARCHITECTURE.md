@@ -81,7 +81,7 @@ kalib/
 │   │   ├── ids_camera.py       # IDS camera driver
 │   │   ├── pi_stage_xy.py      # PI XY stage
 │   │   ├── pi_stage_z.py       # PI Z stage
-│   │   ├── led_driver.py       # LED driver (no controller drives it yet)
+│   │   ├── led_driver.py       # Unused: illumination is manual here
 │   │   ├── factory.py          # Builds real or simulated devices
 │   │   └── sim/                # Simulated devices sharing one SimWorld
 │   │
@@ -119,7 +119,8 @@ class HardwareDevice(ABC):
 - **IDSCamera**: IDS peak SDK camera interface
 - **PIStageXY**: PI E-725 XY motion stage
 - **PIStageZ**: PI E-816.DB Z motion stage
-- **LEDDriver**: Serial-based LED control
+- **LEDDriver**: Serial-based LED control. Not used on this instrument, where
+  illumination is manual and not software-controllable.
 
 **Error Handling**:
 ```python
