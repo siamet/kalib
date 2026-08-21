@@ -164,7 +164,7 @@ Model Layer (State) + Hardware Layer (Device Abstraction)
   back dark with nothing wrong in software. A serial LED controller is being
   sourced; `led_driver.py` and `SimLED` exist for it and should not be deleted.
 
-**Units**: stage positions, steps and travel are **micrometres**. The E-725 drives a P-733.2CD (100 um XY); the E-816.DB gives 10 um in Z.
+**Units**: stage positions, steps and travel are **micrometres**. The E-725 drives a P-733.2CD (100 um XY); the E-665 amplifier, whose computer interface is the E-816 submodule that pipython enumerates, drives a P-725.4CD PIFOC (**400 um** in Z).
 **Camera**: U3-389xCP-M is **monochrome** - a frame is 4000x3000x1 = 12 MB. Leave `camera.pixel_format` on `auto` unless you know why not.
 
 **Configuration System**:

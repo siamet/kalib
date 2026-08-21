@@ -243,15 +243,15 @@ Targets outside the configured travel are refused. `move_xy`, `move_z` and
 commanded, and raise `CommandError` naming the axis and the range:
 
 ```bash
-$ python -m kalib.cli move-z --z 99
-error: CommandError: z=99.0 um is outside the stage travel [0.0, 10.0] um
+$ python -m kalib.cli move-z --z 500
+error: CommandError: z=500.0 um is outside the stage travel [0.0, 400.0] um
 $ python -m kalib.cli get-position
 {"x": 50.0, "y": 50.0, "z": 5.0}
 ```
 
 The stage stays where it was. This matters because the hardware layer's own
 guard **clamps** rather than refusing: before this check existed,
-`move-z --z 99` returned `{"z": 10.0}` and reported success, so a scan that
+`move-z --z 500` returned `{"z": 400.0}` and reported success, so a scan that
 trusted its commanded positions produced a stack whose axis was silently wrong
 at the ends. The clamp is still there as a last resort, but nothing should
 reach it through the controller.
@@ -263,7 +263,7 @@ step from near the end of travel is refused rather than clamped.
 
 All stage positions, step sizes and travel limits are **micrometres**, not
 millimetres. These are piezo stages: the E-725 reports `um` for its axes with
-100 um of XY travel, and the E-816.DB drives 10 um in Z. So
+100 um of XY travel, and the E-665 drives a P-725.4CD PIFOC with 400 um in Z. So
 `move-xy --x 10 --y 20` moves to 10 um, 20 um.
 
 Earlier versions of this project annotated these values as mm throughout —
