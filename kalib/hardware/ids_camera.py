@@ -5,7 +5,7 @@ logging, and integration with hardware base class.
 """
 
 import re
-from typing import Optional, List, Tuple, Dict, Any
+from typing import Optional, List, Tuple, Dict, Any, Sequence
 import numpy as np
 
 try:
@@ -34,22 +34,30 @@ VALID_BIT_RATES = (8, 10, 12)
 def parse_pixel_format(name: str) -> Tuple[int, Optional[str]]:
     """Parse a configured pixel format name into driver arguments.
 
-    "auto" asks the camera for its own native colour mode, which avoids
-    converting a monochrome sensor's frames up to RGB and tripling them for
-    no added information. Explicit names override that.
+    "auto" defers BOTH halves to the camera: its native colour mode, which
+    avoids converting a monochrome sensor's frames up to RGB and tripling them
+    for no added information, and its deepest available bit rate.
+
+    The depth half used to be a hardcoded 8. That put a 12-bit scientific camera
+    into Mono8 whenever the config said "auto", which was its shipped default,
+    and every frame railed at 255 instead of 4094. It was hard to see because the
+    colour half genuinely was auto-detected, so the log line read like a choice
+    somebody made. Deferring both is what the name has always promised.
 
     Args:
         name: Format name such as "auto", "Mono8", "RGB8" or "Mono12"
 
     Returns:
-        Tuple of (bit_rate, colorness), where colorness is None for "auto"
+        Tuple of (bit_rate, colorness). Either is None when "auto" leaves it to
+        the camera; :func:`native_bit_depth` resolves the depth once the device
+        is open and can be asked what it supports.
 
     Raises:
         ConfigurationError: If the name is not a recognised format
     """
     text = (name or "auto").strip()
     if text.lower() in ("auto", "native"):
-        return (8, None)
+        return (None, None)
 
     match = re.fullmatch(r"(Mono|RGB)(\d+)", text, flags=re.IGNORECASE)
     if not match:
@@ -65,6 +73,49 @@ def parse_pixel_format(name: str) -> Tuple[int, Optional[str]]:
             f"Bit rate {bit_rate} not supported. Valid: {list(VALID_BIT_RATES)}"
         )
     return (bit_rate, colorness)
+
+
+
+def native_bit_depth(
+    available_formats: Sequence[str],
+    colorness: str,
+    bayer_pattern: Optional[str] = None,
+) -> int:
+    """Deepest bit rate the camera offers in the given colour mode.
+
+    The other half of "auto". :func:`parse_pixel_format` cannot answer this,
+    because it runs from configuration before any device is open; this runs
+    against what `get_available_pixel_formats` reported and so can only choose
+    something the sensor actually has.
+
+    Deepest rather than a fixed default, because this drives a metrology
+    instrument: discarding four bits is a loss no later processing recovers,
+    while the cost of keeping them is bandwidth. Anything wanting the cheaper
+    format can still ask for Mono8 by name.
+
+    Args:
+        available_formats: Format names from the camera, e.g. "Mono12g40IDS"
+        colorness: "Mono" or "RGB"
+        bayer_pattern: Bayer prefix for a colour camera, e.g. "RG"
+
+    Returns:
+        The bit rate, one of VALID_BIT_RATES
+
+    Raises:
+        ConfigurationError: If the camera offers nothing usable in that mode
+    """
+    prefix = "Mono" if colorness == "Mono" else f"Bayer{bayer_pattern or ''}"
+    depths = set()
+    for name in available_formats:
+        match = re.match(rf"{re.escape(prefix)}(\d+)", str(name))
+        if match and int(match.group(1)) in VALID_BIT_RATES:
+            depths.add(int(match.group(1)))
+    if not depths:
+        raise ConfigurationError(
+            f"Camera offers no usable {prefix} format. Available: "
+            f"{list(available_formats)}, driver supports {list(VALID_BIT_RATES)}"
+        )
+    return max(depths)
 
 
 class IDSCamera(HardwareDevice):
@@ -88,7 +139,7 @@ class IDSCamera(HardwareDevice):
     def __init__(
         self,
         device_idx: int = 0,
-        pixel_format: Tuple[int, Optional[str]] = (8, None),
+        pixel_format: Tuple[Optional[int], Optional[str]] = (None, None),
         name: Optional[str] = None
     ):
         """Initialize IDS camera interface.
@@ -277,12 +328,13 @@ class IDSCamera(HardwareDevice):
         # Use camera's native mode if colorness not specified
         colorness = self._colorness or cam_colorness
 
-        # Validate bit rate
-        valid_bit_rates = [8, 10, 12]
-        if self._bit_rate not in valid_bit_rates:
+        # Validate bit rate. None means "auto", resolved below once the camera
+        # has been asked what it offers; an explicit value is checked here so a
+        # bad config still fails before any device call.
+        if self._bit_rate is not None and self._bit_rate not in VALID_BIT_RATES:
             raise ConfigurationError(
                 f"Bit rate {self._bit_rate} not supported. "
-                f"Valid: {valid_bit_rates}"
+                f"Valid: {list(VALID_BIT_RATES)}"
             )
 
         # Validate colorness
@@ -307,6 +359,17 @@ class IDSCamera(HardwareDevice):
                 raise ConfigurationError(
                     f"No Bayer pattern found in available formats: {available_formats}"
                 )
+
+        # Resolve "auto" now that the camera can be asked. This is the half that
+        # used to be a hardcoded 8, which put a 12-bit sensor into Mono8.
+        if self._bit_rate is None:
+            self._bit_rate = native_bit_depth(
+                available_formats, cam_colorness, bayer_pattern
+            )
+            self._logger.info(
+                f"Pixel format auto: using the sensor's deepest mode, "
+                f"{self._bit_rate}-bit"
+            )
 
         # Build format name candidates (try IDS-specific formats first, then standard)
         if cam_colorness == "Mono":

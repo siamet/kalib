@@ -8,7 +8,11 @@ camera:
   default_exposure: 15000         # Default exposure time (microseconds)
   fps_limit: 30                   # Maximum frames per second
   save_format: "tiff"             # Image save format (tiff, png, jpg)
-  pixel_format: "auto"            # "auto" uses the sensor's native mode; or Mono8/Mono12/RGB8
+  # "auto" takes both the sensor's native colour mode AND its deepest bit rate,
+  # which is 12 on the U3-3890CP. Until 2026-08-22 it silently meant 8-bit, so
+  # frames railed at 255 instead of 4094. Name a format to override, e.g. Mono8
+  # for bandwidth or Mono12/RGB8 to pin one explicitly.
+  pixel_format: "auto"
   auto_exposure: false            # Enable auto exposure by default
 
 # Hardware Backend

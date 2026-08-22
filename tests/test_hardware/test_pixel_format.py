@@ -7,19 +7,24 @@ from kalib.hardware.ids_camera import parse_pixel_format
 
 
 def test_auto_defers_to_the_camera():
-    """'auto' yields no colorness, so the driver uses the sensor's own mode."""
-    assert parse_pixel_format("auto") == (8, None)
+    """'auto' decides neither half here: both wait for the open device.
+
+    This asserted (8, None) until 2026-08-22, which pinned a 12-bit sensor to
+    Mono8 whenever the config said "auto". See test_native_bit_depth.py for the
+    resolution that now happens against what the camera reports.
+    """
+    assert parse_pixel_format("auto") == (None, None)
 
 
 def test_native_is_accepted_as_a_synonym_for_auto():
     """'native' reads more naturally in some configs and means the same."""
-    assert parse_pixel_format("native") == (8, None)
+    assert parse_pixel_format("native") == (None, None)
 
 
 def test_empty_configuration_falls_back_to_auto():
     """A missing or blank value must not crash the camera at connect time."""
-    assert parse_pixel_format("") == (8, None)
-    assert parse_pixel_format(None) == (8, None)
+    assert parse_pixel_format("") == (None, None)
+    assert parse_pixel_format(None) == (None, None)
 
 
 def test_explicit_mono_and_rgb_are_parsed():
