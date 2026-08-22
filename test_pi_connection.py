@@ -116,8 +116,20 @@ def main():
     print("Testing configured device IDs from config...")
     print("="*60)
 
-    z_device_id = "112064239"
-    xy_device_id = "113068710"
+    # Read them rather than repeat them. These were literals until 2026-08-22,
+    # under a heading claiming they came from the config: they happened to agree,
+    # but nothing kept them in step, so changing a serial in the config would
+    # have left this diagnostic quietly testing the old hardware.
+    try:
+        from config import load_config
+        settings = load_config()
+        z_device_id = str(settings.get("stages.z.device_id"))
+        xy_device_id = str(settings.get("stages.xy.device_id"))
+        print(f"  read from config: Z={z_device_id}, XY={xy_device_id}")
+    except Exception as exc:
+        print(f"  ⚠ could not read config ({exc}); falling back to known serials")
+        z_device_id = "112064239"
+        xy_device_id = "113068710"
 
     z_success = test_connection(z_device_id, "E-816.DB")
     xy_success = test_connection(xy_device_id, "E-725")
